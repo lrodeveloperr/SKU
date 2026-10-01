@@ -13,6 +13,15 @@ import { useT } from "../i18n/use-t";
 const EMBED_HANDLE = "exact-search-guard";
 const SHOP_DOMAIN = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
 
+function statusOf(error: unknown): number | null {
+  if (error instanceof Response) return error.status;
+  if (error && typeof error === "object" && "status" in error) {
+    const status = Number((error as { status?: unknown }).status);
+    return Number.isFinite(status) ? status : null;
+  }
+  return null;
+}
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { shop } = await requireShop(request);
   const ready = shop.syncState === "READY";
@@ -41,7 +50,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     context = await requireShop(request);
   } catch (err) {
     const domain = String(form.get("domain") ?? "");
-    if (!(err instanceof Response && err.status === 400 && SHOP_DOMAIN.test(domain))) throw err;
+    if (!(statusOf(err) === 400 && SHOP_DOMAIN.test(domain))) throw err;
     const shop = await getShopByDomain(db, domain);
     if (!shop) throw err;
     const { admin } = await unauthenticated.admin(domain);
