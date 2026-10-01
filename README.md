@@ -23,5 +23,6 @@ npm test && npm run typecheck
 
 Run `npm run build` to build the admin app.
 Production hosting is `https://exact-search-guard.worksbienstudios.com`.
+Production deployment settings and verification checks are in [`docs/production-readiness.md`](./docs/production-readiness.md).
 Billing uses Shopify App Pricing in the Partner Dashboard; see [`docs/pricing-readiness.md`](./docs/pricing-readiness.md).
 Schedule `POST /jobs/reconcile` nightly with `Authorization: Bearer $CRON_SECRET`.
