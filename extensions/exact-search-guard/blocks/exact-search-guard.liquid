@@ -1,0 +1,26 @@
+{%- comment -%}
+  App embed: loads the storefront script without touching theme files.
+  Deactivating the embed (or uninstalling the app) removes this block, and
+  native search behaves exactly as before.
+{%- endcomment -%}
+<script type="application/json" id="exact-search-guard-config">
+  {
+    "root": {{ routes.root_url | json }},
+    "text": {
+      "title": {{ 'exact_search_guard.chooser.title' | t | json }},
+      "close": {{ 'exact_search_guard.chooser.close' | t | json }},
+      "allResults": {{ 'exact_search_guard.chooser.all_results' | t | json }},
+      "soldOut": {{ 'exact_search_guard.chooser.sold_out' | t | json }}
+    }
+  }
+</script>
+
+{% schema %}
+{
+  "name": "Exact Search Guard",
+  "target": "body",
+  "javascript": "exact-search-guard.js",
+  "stylesheet": "exact-search-guard.css",
+  "settings": []
+}
+{% endschema %}

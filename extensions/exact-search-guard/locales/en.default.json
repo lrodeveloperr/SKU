@@ -1,0 +1,10 @@
+{
+  "exact_search_guard": {
+    "chooser": {
+      "title": "Several products match this code",
+      "close": "Close",
+      "all_results": "See all search results",
+      "sold_out": "Sold out"
+    }
+  }
+}
