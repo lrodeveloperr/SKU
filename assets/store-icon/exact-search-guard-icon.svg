@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" role="img" aria-label="Exact Search Guard app icon">
+  <defs>
+    <linearGradient id="bg" x1="170" y1="80" x2="1020" y2="1120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1f7aff"/>
+      <stop offset="0.52" stop-color="#1468f4"/>
+      <stop offset="1" stop-color="#0a3f9e"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="695" y1="610" x2="895" y2="840" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#31c782"/>
+      <stop offset="1" stop-color="#168f5a"/>
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="34" stdDeviation="34" flood-color="#071327" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+
+  <g filter="url(#softShadow)">
+    <path d="M708 716L897 905" fill="none" stroke="#f7fbff" stroke-width="122" stroke-linecap="round"/>
+    <circle cx="507" cy="503" r="286" fill="none" stroke="#f7fbff" stroke-width="104"/>
+  </g>
+
+  <g opacity="0.98">
+    <rect x="360" y="374" width="46" height="260" rx="23" fill="#f7fbff"/>
+    <rect x="431" y="374" width="30" height="260" rx="15" fill="#d8ebff"/>
+    <rect x="491" y="374" width="70" height="260" rx="28" fill="#f7fbff"/>
+    <rect x="592" y="374" width="32" height="260" rx="16" fill="#d8ebff"/>
+    <rect x="653" y="374" width="45" height="260" rx="22.5" fill="#f7fbff"/>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <circle cx="775" cy="725" r="132" fill="url(#badge)" stroke="#f7fbff" stroke-width="42"/>
+    <path d="M714 724L758 768L838 670" fill="none" stroke="#ffffff" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
