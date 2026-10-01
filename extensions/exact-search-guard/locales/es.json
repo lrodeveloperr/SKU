@@ -1,0 +1,10 @@
+{
+  "exact_search_guard": {
+    "chooser": {
+      "title": "Varios productos coinciden con este código",
+      "close": "Cerrar",
+      "all_results": "Ver todos los resultados de búsqueda",
+      "sold_out": "Agotado"
+    }
+  }
+}

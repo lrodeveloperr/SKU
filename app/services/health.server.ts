@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
+import { TtlCache } from "./cache.server";
 import {
   findAmbiguousAliases,
   findDuplicates,
@@ -31,6 +32,21 @@ export interface IdentifierHealth {
 }
 
 const TABLE_LIMIT = 25;
+
+// The audit scans every identifier row, so overview and health pages share a short-lived copy.
+const healthCache = new TtlCache<IdentifierHealth>(60_000, 200);
+
+export async function getIdentifierHealthCached(db: PrismaClient, shopId: string): Promise<IdentifierHealth> {
+  const hit = healthCache.get(shopId);
+  if (hit) return hit;
+  const fresh = await getIdentifierHealth(db, shopId);
+  healthCache.set(shopId, fresh);
+  return fresh;
+}
+
+export function invalidateHealth(shopId: string): void {
+  healthCache.deleteWhere((k) => k === shopId);
+}
 
 /** Product-data audit shown on the Identifier health screen. */
 export async function getIdentifierHealth(db: PrismaClient, shopId: string): Promise<IdentifierHealth> {

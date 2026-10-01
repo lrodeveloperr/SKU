@@ -35,3 +35,4 @@ export const authenticate = shopify.authenticate;
 export const unauthenticated = shopify.unauthenticated;
 export const login = shopify.login;
 export const sessionStorage = shopify.sessionStorage;
+export const addDocumentResponseHeaders = shopify.addDocumentResponseHeaders;
