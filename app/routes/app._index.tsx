@@ -16,8 +16,20 @@ import { AppStorePreviewOverview, AppStorePreviewSetup } from "../app-store-prev
 const EMBED_HANDLE = "exact-search-guard";
 const SHOP_DOMAIN = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
 
-function domainFromAction(request: Request, form: FormData): string {
-  const fromForm = String(form.get("domain") ?? "");
+async function safeFormData(request: Request): Promise<FormData> {
+  try {
+    return await request.formData();
+  } catch {
+    return new FormData();
+  }
+}
+
+function actionValue(form: FormData, url: URL, name: string): string {
+  return String(form.get(name) ?? url.searchParams.get(name) ?? "");
+}
+
+function domainFromAction(request: Request, form: FormData, url: URL): string {
+  const fromForm = actionValue(form, url, "domain") || url.searchParams.get("shop") || "";
   if (SHOP_DOMAIN.test(fromForm)) return fromForm;
   const referer = request.headers.get("referer");
   if (!referer) return "";
@@ -69,12 +81,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const form = await request.formData();
+  const url = new URL(request.url);
+  const form = await safeFormData(request);
+  const intent = actionValue(form, url, "intent");
   let context: Pick<Awaited<ReturnType<typeof requireShop>>, "admin" | "shop">;
   try {
     context = await requireShop(request);
   } catch (err) {
-    const domain = domainFromAction(request, form);
+    const domain = domainFromAction(request, form, url);
     if (!domain) throw err;
     const shop = await getShopByDomain(db, domain);
     if (!shop) throw err;
@@ -82,15 +96,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     context = { admin, shop };
   }
   const { admin, shop } = context;
-  switch (form.get("intent")) {
+  switch (intent) {
     case "mode":
-      await updateShopSettings(db, shop.id, { mode: form.get("mode") === "LIVE" ? "LIVE" : "TEST" });
+      await updateShopSettings(db, shop.id, { mode: actionValue(form, url, "mode") === "LIVE" ? "LIVE" : "TEST" });
       break;
     case "rebuild":
       await startCatalogImport(db, admin, shop);
       break;
     case "embed":
-      await setEmbedActive(db, shop.id, form.get("active") === "1");
+      await setEmbedActive(db, shop.id, actionValue(form, url, "active") === "1");
       break;
   }
   return null;
@@ -129,7 +143,14 @@ export default function Overview() {
         const list: Array<{ handle?: string; activations?: unknown[] }> = await (window as any).shopify.app.extensions();
         const active = list.some((e) => e.handle === EMBED_HANDLE && (e.activations?.length ?? 0) > 0);
         if (!cancelled && active !== d.embedActive) {
-          fetcher.submit({ intent: "embed", active: active ? "1" : "0", domain: d.domain }, { method: "post", action: "/app?index" });
+          const nextActive = active ? "1" : "0";
+          fetcher.submit(
+            { intent: "embed", active: nextActive, domain: d.domain },
+            {
+              method: "post",
+              action: `/app?index&intent=embed&active=${nextActive}&domain=${encodeURIComponent(d.domain)}`,
+            },
+          );
         }
       } catch {
         /* App Bridge unavailable (for example in tests): keep the stored value. */
@@ -142,6 +163,7 @@ export default function Overview() {
   }, [d.embedActive]);
 
   const editorUrl = `https://${d.domain}/admin/themes/current/editor?context=apps&activateAppId=${d.apiKey}/${EMBED_HANDLE}`;
+  const actionUrl = `/app?index&domain=${encodeURIComponent(d.domain)}`;
   const importDone = d.syncState === "READY";
   const live = d.mode === "LIVE";
 
@@ -173,7 +195,7 @@ export default function Overview() {
         {(d.syncState === "IMPORTING" || d.syncState === "PENDING") && <s-paragraph>{t.overview.stepImportPending}</s-paragraph>}
         {d.syncState === "FAILED" && <s-banner tone="critical">{fmt(t.overview.stepImportFailed, { error: d.syncError ?? "" })}</s-banner>}
         {(d.syncState === "FAILED" || importDone) && (
-          <fetcher.Form method="post" action="/app?index">
+          <fetcher.Form method="post" action={`${actionUrl}&intent=rebuild`}>
             <input type="hidden" name="intent" value="rebuild" />
             <input type="hidden" name="domain" value={d.domain} />
             <s-button type="submit">{t.overview.rebuild}</s-button>
@@ -206,7 +228,7 @@ export default function Overview() {
 
       <Step title={`5. ${t.overview.stepLive}`} done={live}>
         <s-paragraph>{live ? t.overview.stepLiveDone : t.overview.stepLiveBody}</s-paragraph>
-        <fetcher.Form method="post" action="/app?index">
+        <fetcher.Form method="post" action={`${actionUrl}&intent=mode&mode=${live ? "TEST" : "LIVE"}`}>
           <input type="hidden" name="intent" value="mode" />
           <input type="hidden" name="mode" value={live ? "TEST" : "LIVE"} />
           <input type="hidden" name="domain" value={d.domain} />
