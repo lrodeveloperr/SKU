@@ -4,7 +4,7 @@ import { db } from "../db.server";
 import { requireShop } from "../services/session.server";
 import { getIdentifierHealthCached } from "../services/health.server";
 import { getRecoveryAnalytics } from "../services/analytics.server";
-import { startCatalogImport } from "../services/catalog-import.server";
+import { startCatalogImportWithSessionRefresh } from "../services/catalog-import-auth.server";
 import { getShopByDomain, setEmbedActive, updateShopSettings } from "../services/shops.server";
 import { unauthenticated } from "../shopify.server";
 import { fmt } from "../i18n";
@@ -95,16 +95,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const { admin } = await unauthenticated.admin(domain);
     context = { admin, shop };
   }
-  const { shop } = context;
+  const { admin, shop } = context;
   switch (intent) {
     case "mode":
       await updateShopSettings(db, shop.id, { mode: actionValue(form, url, "mode") === "LIVE" ? "LIVE" : "TEST" });
       break;
     case "rebuild":
-      {
-        const { admin: offlineAdmin } = await unauthenticated.admin(shop.domain);
-        await startCatalogImport(db, offlineAdmin, shop);
-      }
+      await startCatalogImportWithSessionRefresh(db, request, admin, shop);
       break;
     case "embed":
       await setEmbedActive(db, shop.id, actionValue(form, url, "active") === "1");
