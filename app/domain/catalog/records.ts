@@ -93,6 +93,7 @@ export interface GqlVariant {
   title: string;
   sku?: string | null;
   barcode?: string | null;
+  availableForSale?: boolean | null;
   inventoryQuantity?: number | null;
   inventoryPolicy?: string | null;
   variantModel?: { value: string } | null;
@@ -110,7 +111,7 @@ export interface GqlProduct {
 }
 
 export function variantFromGql(v: GqlVariant, productModel: string | null): VariantRecord {
-  const inStock = (v.inventoryQuantity ?? 0) > 0 || v.inventoryPolicy === "CONTINUE";
+  const inStock = v.availableForSale ?? ((v.inventoryQuantity ?? 0) > 0 || v.inventoryPolicy === "CONTINUE");
   return {
     id: v.id,
     legacyId: String(v.legacyResourceId),
