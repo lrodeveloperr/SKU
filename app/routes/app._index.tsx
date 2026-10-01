@@ -13,13 +13,17 @@ import { useT } from "../i18n/use-t";
 const EMBED_HANDLE = "exact-search-guard";
 const SHOP_DOMAIN = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
 
-function statusOf(error: unknown): number | null {
-  if (error instanceof Response) return error.status;
-  if (error && typeof error === "object" && "status" in error) {
-    const status = Number((error as { status?: unknown }).status);
-    return Number.isFinite(status) ? status : null;
+function domainFromAction(request: Request, form: FormData): string {
+  const fromForm = String(form.get("domain") ?? "");
+  if (SHOP_DOMAIN.test(fromForm)) return fromForm;
+  const referer = request.headers.get("referer");
+  if (!referer) return "";
+  try {
+    const fromReferer = new URL(referer).searchParams.get("shop") ?? "";
+    return SHOP_DOMAIN.test(fromReferer) ? fromReferer : "";
+  } catch {
+    return "";
   }
-  return null;
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -49,8 +53,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     context = await requireShop(request);
   } catch (err) {
-    const domain = String(form.get("domain") ?? "");
-    if (!(statusOf(err) === 400 && SHOP_DOMAIN.test(domain))) throw err;
+    const domain = domainFromAction(request, form);
+    if (!domain) throw err;
     const shop = await getShopByDomain(db, domain);
     if (!shop) throw err;
     const { admin } = await unauthenticated.admin(domain);
