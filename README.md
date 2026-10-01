@@ -21,6 +21,6 @@ npm test && npm run typecheck
 | Admin screens (Polaris web components, EN/ES) | `app/routes/app.*.tsx`, `app/i18n/` |
 | Schema and migration | `prisma/` |
 
-Not built yet: billing (step 10) and the cross-theme testing (step 9).
+Not built yet: billing (step 10), production hosting and the cross-theme testing (step 9).
 Run `npm run build` to build the admin app.
-Deploy `shopify.app.toml` after setting `client_id` and URLs, and schedule `POST /jobs/reconcile` nightly with `Authorization: Bearer $CRON_SECRET`.
+Deploy `shopify.app.toml` after the production host is live, and schedule `POST /jobs/reconcile` nightly with `Authorization: Bearer $CRON_SECRET`.
