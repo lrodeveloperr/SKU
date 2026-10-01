@@ -19,9 +19,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 const numericId = (gid: string) => gid.split("/").pop() ?? "";
 
 function ProductLink({ v }: { v: VariantRef }) {
-  const { t } = useT();
   return (
-    <s-link href={`shopify:admin/products/${numericId(v.productId)}`}>
+    <s-link href={`shopify://admin/products/${numericId(v.productId)}`} target="_top">
       {v.title}
       {v.variantTitle && v.variantTitle !== "Default Title" ? ` · ${v.variantTitle}` : ""}
     </s-link>
