@@ -267,7 +267,7 @@ export function AppStorePreviewAnalytics(props: { days: number; analytics: Recov
     >
       <section className="wb-card-row wb-analytics-cards">
         <MetricCard label="Fallbacks" value={a.fallbacks} />
-        <MetricCard label="Unresolved" value={a.unresolved} tone="amber" />
+        <MetricCard label="Open" value={a.unresolved} tone="amber" />
         <MetricCard label="Events" value={a.timeouts + a.errors} tone="red" />
       </section>
     </AppStorePreviewShell>

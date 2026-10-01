@@ -71,7 +71,7 @@ def diagnostic() -> str:
 def analytics() -> str:
     bars = "".join([f'<i style="height:{h}px"></i>' for h in [47, 53, 58, 62, 59, 70, 75, 79, 84, 73, 92, 92]])
     aside = browser("Recovery analytics", f'<h2>Recovered searches</h2><p>One year of safe fictitious data</p><div class="metric-grid">{metric("Recovered","4,286","exact or chooser")}{metric("Exact matches","3,874","direct routes","green")}{metric("Chooser","412","duplicate flows","amber")}</div><div class="chart">{bars}</div><div class="chart-labels"><span>Oct</span><span>Dec</span><span>Feb</span><span>Apr</span><span>Jun</span><span>Aug</span></div>', "analytics", ("blue", "green", "amber"))
-    body = f'<section class="card-row analytics-cards">{metric("Fallbacks","9,814")}{metric("Unresolved","738","","amber")}{metric("Events","19","","red")}</section>'
+    body = f'<section class="card-row analytics-cards">{metric("Fallbacks","9,814")}{metric("Open","738","","amber")}{metric("Events","19","","red")}</section>'
     return shell("One-year recovery", "See where exact search is saving orders.", "Fictitious trailing-year data highlights recovered searches, duplicate chooser usage, and unresolved code opportunities.", aside, body)
 
 
