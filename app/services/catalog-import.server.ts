@@ -8,14 +8,66 @@ import {
   type ProductRecord,
 } from "../domain/catalog/records";
 import {
+  PRODUCT_IDS_QUERY,
   BULK_OPERATION_QUERY,
   bulkProductsQuery,
   collectBulkProducts,
+  productQuery,
   readLines,
   START_BULK_MUTATION,
 } from "../domain/catalog/queries";
 
 const IMPORT_TX_TIMEOUT_MS = 10 * 60_000;
+
+function isBulkAccessDenied(err: unknown): boolean {
+  const message = errorMessage(err);
+  return message.includes("403") || message.toLowerCase().includes("forbidden");
+}
+
+async function fetchProductForImport(admin: AdminClient, shop: Shop, productId: string): Promise<ProductRecord | null> {
+  const query = productQuery(modelConfig(shop));
+  let product: any = null;
+  const variants: any[] = [];
+  let after: string | null = null;
+
+  for (;;) {
+    const data: any = await adminQuery(admin, query, { id: productId, after });
+    if (!data.product) return null;
+    product = data.product;
+    const page: { nodes?: any[]; pageInfo?: { hasNextPage: boolean; endCursor: string } } = data.product.variants ?? {};
+    variants.push(...(page.nodes ?? []));
+    if (!page.pageInfo?.hasNextPage) break;
+    after = page.pageInfo.endCursor;
+  }
+  return productFromGql(product, variants);
+}
+
+async function runPagedImport(db: PrismaClient, admin: AdminClient, shop: Shop, job: { id: string; startedAt: Date }) {
+  const products: ProductRecord[] = [];
+  let after: string | null = null;
+
+  for (;;) {
+    const data: any = await adminQuery(admin, PRODUCT_IDS_QUERY, { after });
+    for (const node of data.products.nodes as Array<{ id: string }>) {
+      const product = await fetchProductForImport(admin, shop, node.id);
+      if (product) products.push(product);
+    }
+    if (!data.products.pageInfo.hasNextPage) break;
+    after = data.products.pageInfo.endCursor;
+  }
+
+  const stats = await replaceCatalog(db, shop.id, products, job.startedAt);
+  const now = new Date();
+  await db.$transaction([
+    db.syncJob.update({ where: { id: job.id }, data: { status: "DONE", finishedAt: now, stats } }),
+    db.shop.update({
+      where: { id: shop.id },
+      data: { syncState: "READY", syncError: null, lastSyncedAt: now },
+    }),
+  ]);
+  invalidateShop(shop.domain);
+  return { jobId: job.id };
+}
 
 /** Starts the bulk export that seeds the index. Completion arrives via `bulk_operations/finish`. */
 export async function startCatalogImport(
@@ -38,6 +90,14 @@ export async function startCatalogImport(
     await db.shop.update({ where: { id: shop.id }, data: { syncState: "IMPORTING", syncError: null } });
     return { jobId: job.id };
   } catch (err) {
+    if (isBulkAccessDenied(err)) {
+      try {
+        return await runPagedImport(db, admin, shop, job);
+      } catch (fallbackErr) {
+        await failImport(db, shop.id, job.id, fallbackErr);
+        return { error: errorMessage(fallbackErr) };
+      }
+    }
     await failImport(db, shop.id, job.id, err);
     return { error: errorMessage(err) };
   }
