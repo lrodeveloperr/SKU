@@ -60,7 +60,7 @@ export default function Settings() {
     <s-page heading={t.settings.title}>
       {result && (result.ok ? <s-banner tone="success">{result.message}</s-banner> : <s-banner tone="critical">{result.error}</s-banner>)}
 
-      <form method="post">
+      <form method="post" action="/app/settings">
         <s-section heading={t.settings.mode}>
           <s-stack gap="base">
             <s-select label={t.settings.mode} name="mode" value={d.mode}>

@@ -81,7 +81,7 @@ export default function Overview() {
         const list: Array<{ handle?: string; activations?: unknown[] }> = await (window as any).shopify.app.extensions();
         const active = list.some((e) => e.handle === EMBED_HANDLE && (e.activations?.length ?? 0) > 0);
         if (!cancelled && active !== d.embedActive) {
-          fetcher.submit({ intent: "embed", active: active ? "1" : "0" }, { method: "post" });
+          fetcher.submit({ intent: "embed", active: active ? "1" : "0" }, { method: "post", action: "/app" });
         }
       } catch {
         /* App Bridge unavailable (for example in tests): keep the stored value. */
@@ -110,7 +110,7 @@ export default function Overview() {
         {(d.syncState === "IMPORTING" || d.syncState === "PENDING") && <s-paragraph>{t.overview.stepImportPending}</s-paragraph>}
         {d.syncState === "FAILED" && <s-banner tone="critical">{fmt(t.overview.stepImportFailed, { error: d.syncError ?? "" })}</s-banner>}
         {(d.syncState === "FAILED" || importDone) && (
-          <fetcher.Form method="post">
+          <fetcher.Form method="post" action="/app">
             <input type="hidden" name="intent" value="rebuild" />
             <s-button type="submit">{t.overview.rebuild}</s-button>
           </fetcher.Form>
@@ -142,7 +142,7 @@ export default function Overview() {
 
       <Step title={`5. ${t.overview.stepLive}`} done={live}>
         <s-paragraph>{live ? t.overview.stepLiveDone : t.overview.stepLiveBody}</s-paragraph>
-        <fetcher.Form method="post">
+        <fetcher.Form method="post" action="/app">
           <input type="hidden" name="intent" value="mode" />
           <input type="hidden" name="mode" value={live ? "TEST" : "LIVE"} />
           <s-button type="submit" variant={live ? "secondary" : "primary"} disabled={!importDone}>
