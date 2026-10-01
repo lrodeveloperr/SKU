@@ -3,6 +3,7 @@ import { db } from "../db.server";
 import { requireShop } from "../services/session.server";
 import { startCatalogImport } from "../services/catalog-import.server";
 import { updateShopSettings } from "../services/shops.server";
+import { unauthenticated } from "../shopify.server";
 import { planFor } from "../domain/plans";
 import { fmt, messages, toLocale } from "../i18n";
 import { useT } from "../i18n/use-t";
@@ -25,7 +26,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin, shop, t } = await requireShop(request);
+  const { shop, t } = await requireShop(request);
   const form = await request.formData();
   const text = (k: string) => String(form.get(k) ?? "").trim();
 
@@ -42,7 +43,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       locale: toLocale(text("locale")),
       modelMetafield: namespace ? { namespace, key } : null,
     });
-    if (needsReimport) await startCatalogImport(db, admin, updated);
+    if (needsReimport) {
+      const { admin } = await unauthenticated.admin(updated.domain);
+      await startCatalogImport(db, admin, updated);
+    }
     return { ok: true as const, message: needsReimport ? messages[toLocale(updated.locale)].settings.modelChanged : messages[toLocale(updated.locale)].common.saved };
   } catch {
     return { ok: false as const, error: t.settings.invalidMetafield };
