@@ -1,4 +1,4 @@
-import { useLoaderData, type LoaderFunctionArgs } from "react-router";
+import { useFetcher, useLoaderData, useLocation, type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
 import { db } from "../db.server";
 import { requireShop } from "../services/session.server";
 import { diagnoseQuery } from "../services/diagnostic.server";
@@ -8,7 +8,7 @@ import { screenshotDiagnostic } from "../services/screenshot-fixtures.server";
 import { isScreenshotMode } from "../services/screenshot-mode.server";
 import { AppStorePreviewDiagnostic } from "../app-store-preview-screens";
 
-// A GET form keeps the test shareable and needs no action.
+// POST back to the current embedded URL so Shopify's auth context stays intact.
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const q = (new URL(request.url).searchParams.get("q") ?? "").slice(0, MAX_QUERY_LENGTH * 2);
   if (isScreenshotMode()) {
@@ -20,8 +20,21 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return { screenshotMode: false, q, diagnostic };
 };
 
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const form = await request.formData();
+  const q = String(form.get("q") ?? "").slice(0, MAX_QUERY_LENGTH * 2);
+  const { shop } = await requireShop(request);
+  const diagnostic = q.trim() ? await diagnoseQuery(db, shop, q) : null;
+  return { q, diagnostic };
+};
+
 export default function Diagnostic() {
-  const { screenshotMode, q, diagnostic } = useLoaderData<typeof loader>();
+  const loaderData = useLoaderData<typeof loader>();
+  const fetcher = useFetcher<typeof action>();
+  const location = useLocation();
+  const { screenshotMode } = loaderData;
+  const activeData = fetcher.data ?? loaderData;
+  const { q, diagnostic } = activeData;
   const { t } = useT();
   const r = diagnostic?.response;
   const experience = {
@@ -39,14 +52,14 @@ export default function Diagnostic() {
     <s-page heading={t.diagnostic.title}>
       <s-section>
         <s-paragraph>{t.diagnostic.intro}</s-paragraph>
-        <form method="get">
+        <fetcher.Form method="post" action={`${location.pathname}${location.search}`}>
           <s-stack gap="base">
             <s-text-field label={t.diagnostic.label} name="q" value={q} maxLength={MAX_QUERY_LENGTH * 2} />
-            <s-button type="submit" variant="primary">
+            <s-button type="submit" variant="primary" loading={fetcher.state !== "idle"}>
               {t.diagnostic.run}
             </s-button>
           </s-stack>
-        </form>
+        </fetcher.Form>
       </s-section>
 
       {diagnostic && r && (
