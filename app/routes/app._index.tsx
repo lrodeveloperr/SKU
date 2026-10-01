@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useFetcher, useLoaderData, useRevalidator, useSearchParams, type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
 import { db } from "../db.server";
 import { requireShop } from "../services/session.server";
+import { completeBulkImport } from "../services/catalog-import.server";
 import { getIdentifierHealthCached } from "../services/health.server";
 import { getRecoveryAnalytics } from "../services/analytics.server";
 import { startCatalogImportWithSessionRefresh } from "../services/catalog-import-auth.server";
@@ -59,20 +60,34 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       unresolved: analytics.unresolved,
     };
   }
-  const { shop } = await requireShop(request);
-  const ready = shop.syncState === "READY";
+  const { admin, shop } = await requireShop(request);
+  let currentShop = shop;
+  if (shop.syncState === "IMPORTING") {
+    const runningImport = await db.syncJob.findFirst({
+      where: { shopId: shop.id, type: "INITIAL_IMPORT", status: "RUNNING", bulkOperationId: { not: null } },
+      orderBy: { startedAt: "desc" },
+      select: { bulkOperationId: true },
+    });
+    if (runningImport?.bulkOperationId) {
+      const result = await completeBulkImport(db, admin, runningImport.bulkOperationId);
+      if (result === "done" || result === "failed") {
+        currentShop = (await db.shop.findUnique({ where: { id: shop.id } })) ?? shop;
+      }
+    }
+  }
+  const ready = currentShop.syncState === "READY";
   const [health, analytics] = ready
-    ? await Promise.all([getIdentifierHealthCached(db, shop.id), getRecoveryAnalytics(db, shop.id, 30)])
+    ? await Promise.all([getIdentifierHealthCached(db, currentShop.id), getRecoveryAnalytics(db, currentShop.id, 30)])
     : [null, null];
   return {
     screenshotMode: false,
-    domain: shop.domain,
+    domain: currentShop.domain,
     apiKey: process.env.SHOPIFY_API_KEY || "",
-    syncState: shop.syncState,
-    syncError: shop.syncError,
-    mode: shop.mode,
-    enabled: shop.enabled,
-    embedActive: shop.embedActive,
+    syncState: currentShop.syncState,
+    syncError: currentShop.syncError,
+    mode: currentShop.mode,
+    enabled: currentShop.enabled,
+    embedActive: currentShop.embedActive,
     indexed: health?.indexedVariants ?? 0,
     counts: health?.counts ?? null,
     recovered: analytics?.recovered ?? 0,
