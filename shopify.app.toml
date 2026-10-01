@@ -1,14 +1,14 @@
 # WorksBien Dev Dashboard app: Exact Search Guard
 client_id = "4ed164c8367bd874ae7a28cfdc51b472"
 name = "Exact Search Guard"
-application_url = "https://exact-search-guard.worksbienstudios.com"
+application_url = "https://exact-search-guard-production.up.railway.app"
 embedded = true
 
 [access_scopes]
 scopes = "read_products,write_app_proxy"
 
 [auth]
-redirect_urls = ["https://exact-search-guard.worksbienstudios.com/auth/callback"]
+redirect_urls = ["https://exact-search-guard-production.up.railway.app/auth/callback"]
 
 [webhooks]
 api_version = "2026-07"
