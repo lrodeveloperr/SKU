@@ -10,7 +10,7 @@ export const meta = () => [
 
 export default function About() {
   return (
-    <PublicPage eyebrow="About" title="A focused search guardrail for product-code stores.">
+    <PublicPage eyebrow="Product" title="A focused search guardrail for product-code stores.">
       <p>
         Exact Search Guard is built for Shopify merchants whose shoppers search by SKU, barcode, model number, part number, or another exact product identifier.
       </p>

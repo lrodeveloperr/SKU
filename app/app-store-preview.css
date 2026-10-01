@@ -148,18 +148,6 @@ body:has(.wb-screen) {
   border-radius: 999px;
 }
 
-.wb-dot-red {
-  background: #ff6b62;
-}
-
-.wb-dot-yellow {
-  background: #ffbd45;
-}
-
-.wb-dot-green {
-  background: #31c875;
-}
-
 .wb-window-body {
   padding: 32px 42px;
 }
@@ -466,10 +454,6 @@ body:has(.wb-screen) {
   font-size: 48px;
 }
 
-.wb-analytics-window {
-  width: 870px;
-}
-
 .wb-chart {
   height: 146px;
   margin-top: 34px;
@@ -501,17 +485,18 @@ body:has(.wb-screen) {
   grid-template-columns: repeat(3, 178px);
   align-items: stretch;
   margin-top: 14px;
+  width: 574px;
 }
 
 .wb-analytics-cards .wb-metric {
-  min-height: 136px;
-  height: 136px;
-  padding: 18px 24px;
+  min-height: 126px;
+  height: 126px;
+  padding: 16px 24px;
 }
 
 .wb-analytics-cards .wb-metric strong {
-  margin-top: 24px;
-  font-size: 42px;
+  margin-top: 18px;
+  font-size: 38px;
 }
 
 .wb-analytics-cards .wb-metric small {

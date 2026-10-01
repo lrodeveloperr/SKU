@@ -3,8 +3,7 @@ import type { ReactNode } from "react";
 const nav = [
   ["Support", "/support"],
   ["About", "/about"],
-  ["Privacy", "/privacy"],
-  ["Terms", "/terms"],
+  ["Policies", "/policies"],
 ] as const;
 
 export function PublicPage(props: { title: string; eyebrow?: string; children: ReactNode }) {

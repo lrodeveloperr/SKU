@@ -3,6 +3,7 @@ import type { IdentifierHealth } from "./services/health.server";
 import type { RecoveryAnalytics } from "./services/analytics.server";
 
 type HealthCounts = IdentifierHealth["counts"];
+type PreviewTone = "blue" | "green" | "amber" | "red" | "orange" | "purple" | "muted";
 
 export function AppStorePreviewShell(props: { eyebrow: string; title: string; intro: string; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
@@ -14,8 +15,7 @@ export function AppStorePreviewShell(props: { eyebrow: string; title: string; in
         <nav className="wb-nav" aria-label="Preview navigation">
           <a href="/support">Support</a>
           <a href="/about">About</a>
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
+          <a href="/policies">Policies</a>
         </nav>
       </header>
       <section className="wb-hero">
@@ -31,13 +31,14 @@ export function AppStorePreviewShell(props: { eyebrow: string; title: string; in
   );
 }
 
-export function BrowserCard(props: { title: string; children: React.ReactNode; className?: string }) {
+export function BrowserCard(props: { title: string; children: React.ReactNode; className?: string; tones?: PreviewTone[] }) {
+  const tones = props.tones ?? ["blue", "green", "amber"];
   return (
     <section className={`wb-window ${props.className ?? ""}`}>
       <div className="wb-window-bar">
-        <span className="wb-dot wb-dot-red" />
-        <span className="wb-dot wb-dot-yellow" />
-        <span className="wb-dot wb-dot-green" />
+        {tones.map((tone) => (
+          <span key={tone} className={`wb-dot wb-tone-${tone}`} />
+        ))}
         <strong>{props.title}</strong>
       </div>
       <div className="wb-window-body">{props.children}</div>
@@ -58,7 +59,7 @@ export function MetricCard(props: { label: string; value: string | number; note?
 
 export function SearchPreview() {
   return (
-    <BrowserCard title="Storefront search" className="wb-search-preview">
+    <BrowserCard title="Storefront search" className="wb-search-preview" tones={["green", "blue", "muted"]}>
       <h2>Search</h2>
       <div className="wb-search-box">
         <span>BK204</span>
@@ -146,7 +147,7 @@ export function AppStorePreviewHealth(props: { health: IdentifierHealth }) {
         c.duplicates + c.ambiguousAliases + c.missingSku
       ).toLocaleString()} cleanup items surfaced.`}
       aside={
-        <BrowserCard title="Identifier health" className="wb-health-window">
+        <BrowserCard title="Identifier health" className="wb-health-window" tones={["orange", "purple", "red"]}>
           <h2>Catalog health</h2>
           <p>Fictitious demo store - trailing 12 months</p>
           <div className="wb-metric-grid">
@@ -218,7 +219,7 @@ export function AppStorePreviewDiagnostic(props: { q: string; diagnostic: Diagno
         </section>
       }
     >
-      <BrowserCard title="Diagnostic result" className="wb-diagnostic-window">
+      <BrowserCard title="Diagnostic result" className="wb-diagnostic-window" tones={["blue", "green", "amber"]}>
         <span className="wb-muted-label">Query</span>
         <div className="wb-diagnostic-line">
           <strong>{query}</strong>
@@ -240,7 +241,7 @@ export function AppStorePreviewAnalytics(props: { days: number; analytics: Recov
       title="See where exact search is saving orders."
       intro="Fictitious trailing-year data highlights recovered searches, duplicate chooser usage, and unresolved code opportunities."
       aside={
-        <BrowserCard title="Recovery analytics" className="wb-analytics-window">
+        <BrowserCard title="Recovery analytics" className="wb-analytics-window" tones={["blue", "green", "amber"]}>
           <h2>Recovered searches</h2>
           <p>One year of safe fictitious data</p>
           <div className="wb-metric-grid">
