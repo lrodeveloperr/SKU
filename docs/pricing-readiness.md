@@ -2,6 +2,8 @@
 
 Exact Search Guard should use Shopify App Pricing for public-app subscriptions. Do not add an Admin Billing API flow for these supported monthly plans.
 
+Partner registration is paid, so the remaining pricing work is Partner Dashboard configuration and entitlement enforcement decisions.
+
 ## Plans
 
 | Plan | Monthly price | Catalog limit | Searches |
