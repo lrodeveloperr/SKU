@@ -16,6 +16,38 @@ import { AppStorePreviewOverview, AppStorePreviewSetup } from "../app-store-prev
 
 const EMBED_HANDLE = "exact-search-guard";
 const SHOP_DOMAIN = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
+const APP_BRIDGE_RETRIES = 20;
+const APP_BRIDGE_RETRY_MS = 250;
+
+type AppExtension = { handle?: string; activations?: unknown[] };
+type ShopifyBridge = { app?: { extensions?: () => Promise<AppExtension[]> } };
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shopifyBridge() {
+  return (window as Window & { shopify?: ShopifyBridge }).shopify;
+}
+
+async function loadAppExtensions(isCancelled: () => boolean): Promise<AppExtension[] | null> {
+  for (let attempt = 0; attempt < APP_BRIDGE_RETRIES; attempt += 1) {
+    if (isCancelled()) return null;
+
+    const app = shopifyBridge()?.app;
+    if (typeof app?.extensions === "function") {
+      try {
+        return await app.extensions();
+      } catch {
+        // The bridge can be present before its extension API is ready.
+      }
+    }
+
+    await delay(APP_BRIDGE_RETRY_MS);
+  }
+
+  return null;
+}
 
 async function safeFormData(request: Request): Promise<FormData> {
   try {
@@ -154,21 +186,19 @@ export default function Overview() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const list: Array<{ handle?: string; activations?: unknown[] }> = await (window as any).shopify.app.extensions();
-        const active = list.some((e) => e.handle === EMBED_HANDLE && (e.activations?.length ?? 0) > 0);
-        if (!cancelled && active !== d.embedActive) {
-          const nextActive = active ? "1" : "0";
-          fetcher.submit(
-            { intent: "embed", active: nextActive, domain: d.domain },
-            {
-              method: "post",
-              action: `/app?index&intent=embed&active=${nextActive}&domain=${encodeURIComponent(d.domain)}`,
-            },
-          );
-        }
-      } catch {
-        /* App Bridge unavailable (for example in tests): keep the stored value. */
+      const list = await loadAppExtensions(() => cancelled);
+      if (!list) return;
+
+      const active = list.some((e) => e.handle === EMBED_HANDLE && (e.activations?.length ?? 0) > 0);
+      if (!cancelled && active !== d.embedActive) {
+        const nextActive = active ? "1" : "0";
+        fetcher.submit(
+          { intent: "embed", active: nextActive, domain: d.domain },
+          {
+            method: "post",
+            action: `/app?index&intent=embed&active=${nextActive}&domain=${encodeURIComponent(d.domain)}`,
+          },
+        );
       }
     })();
     return () => {
