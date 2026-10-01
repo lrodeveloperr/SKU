@@ -17,8 +17,7 @@ const variantFields = (model: ModelMetafield | null) => `
   title
   sku
   barcode
-  inventoryQuantity
-  inventoryPolicy
+  availableForSale
   ${metafield("variantModel", model)}`;
 
 const productScalars = (model: ModelMetafield | null) => `
