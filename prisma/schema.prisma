@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Required by @shopify/shopify-app-session-storage-prisma
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+
+  @@index([shop])
+}
+
+enum ShopMode {
+  TEST // only intercepts requests carrying preview=1
+  LIVE
+}
+
+enum OutOfStockMode {
+  SHOW
+  WARN
+  EXCLUDE
+}
+
+enum SyncState {
+  PENDING
+  IMPORTING
+  READY
+  FAILED
+}
+
+enum SyncJobType {
+  INITIAL_IMPORT
+  WEBHOOK
+  RECONCILE
+}
+
+enum SyncJobStatus {
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum IdentifierType {
+  SKU
+  BARCODE
+  MODEL
+}
+
+enum SearchOutcome {
+  MATCH // unique exact match, shopper redirected
+  MULTIPLE // several exact matches, chooser shown
+  FALLBACK // no exact match, original query went to native search
+  TIMEOUT // lookup exceeded the server-side budget
+  ERROR // lookup failed, native search used
+}
+
+// Installation, plan, locale, embed status and sync state
+model Shop {
+  id                      String         @id @default(cuid())
+  domain                  String         @unique
+  plan                    String         @default("development")
+  locale                  String         @default("en")
+  mode                    ShopMode       @default(TEST)
+  enabled                 Boolean        @default(true)
+  outOfStockMode          OutOfStockMode @default(SHOW)
+  modelMetafieldNamespace String?
+  modelMetafieldKey       String?
+  embedActive             Boolean        @default(false)
+  syncState               SyncState      @default(PENDING)
+  syncError               String?
+  lastSyncedAt            DateTime?
+  lastReconciledAt        DateTime?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  variants          CatalogVariant[]
+  identifierEntries IdentifierEntry[]
+  searchEvents      SearchEvent[]
+  syncJobs          SyncJob[]
+}
+
+// One row per indexed variant; carries the product-level state needed to
+// decide eligibility, so identifier rows stay small.
+model CatalogVariant {
+  shopId           String
+  id               String // variant GID
+  legacyId         String // numeric id used in ?variant=
+  productId        String // product GID
+  handle           String
+  productTitle     String
+  variantTitle     String
+  sku              String?
+  barcode          String?
+  published        Boolean // visible on the Online Store
+  inStock          Boolean
+  productUpdatedAt DateTime // Shopify updatedAt of the product at sync time
+  syncedAt         DateTime @default(now())
+
+  shop    Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  entries IdentifierEntry[]
+
+  @@id([shopId, id])
+  @@index([shopId, productId])
+  @@index([shopId, syncedAt])
+}
+
+// Typed, normalized identifiers mapped to variants
+model IdentifierEntry {
+  shopId    String
+  type      IdentifierType
+  variantId String
+  original  String // as stored in Shopify
+  folded    String // NFKC + lower case
+  spaced    String // folded + collapsed whitespace
+  compact   String // spaced with separators removed
+
+  shop    Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  variant CatalogVariant @relation(fields: [shopId, variantId], references: [shopId, id], onDelete: Cascade)
+
+  @@id([shopId, type, variantId])
+  @@index([shopId, original])
+  @@index([shopId, folded])
+  @@index([shopId, spaced])
+  @@index([shopId, compact])
+}
+
+// Resolution events; never holds customer identifiers
+model SearchEvent {
+  id               String        @id @default(cuid())
+  shopId           String
+  outcome          SearchOutcome
+  identifierShaped Boolean // query looked like a code (contains a digit)
+  query            String? // stored only for identifier-shaped queries
+  stage            String? // which lookup stage matched
+  reason           String?
+  productHandle    String? // for MATCH
+  matchCount       Int       @default(0)
+  latencyMs        Int?
+  createdAt        DateTime  @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, createdAt])
+  @@index([shopId, outcome, createdAt])
+}
+
+// Initial imports, webhook work, reconciliation and failure recovery
+model SyncJob {
+  id             String        @id @default(cuid())
+  shopId         String
+  type           SyncJobType
+  status         SyncJobStatus @default(RUNNING)
+  idempotencyKey String?       @unique
+  bulkOperationId String?
+  topic          String?
+  error          String?
+  stats          Json?
+  startedAt      DateTime      @default(now())
+  finishedAt     DateTime?
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, type, status])
+  @@index([bulkOperationId])
+}
