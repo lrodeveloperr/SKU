@@ -5,11 +5,13 @@ import { requireShop } from "../services/session.server";
 import { getIdentifierHealthCached } from "../services/health.server";
 import { getRecoveryAnalytics } from "../services/analytics.server";
 import { startCatalogImport } from "../services/catalog-import.server";
-import { setEmbedActive, updateShopSettings } from "../services/shops.server";
+import { getShopByDomain, setEmbedActive, updateShopSettings } from "../services/shops.server";
+import { unauthenticated } from "../shopify.server";
 import { fmt } from "../i18n";
 import { useT } from "../i18n/use-t";
 
 const EMBED_HANDLE = "exact-search-guard";
+const SHOP_DOMAIN = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { shop } = await requireShop(request);
@@ -33,8 +35,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin, shop } = await requireShop(request);
   const form = await request.formData();
+  let context: Pick<Awaited<ReturnType<typeof requireShop>>, "admin" | "shop">;
+  try {
+    context = await requireShop(request);
+  } catch (err) {
+    const domain = String(form.get("domain") ?? "");
+    if (!(err instanceof Response && err.status === 400 && SHOP_DOMAIN.test(domain))) throw err;
+    const shop = await getShopByDomain(db, domain);
+    if (!shop) throw err;
+    const { admin } = await unauthenticated.admin(domain);
+    context = { admin, shop };
+  }
+  const { admin, shop } = context;
   switch (form.get("intent")) {
     case "mode":
       await updateShopSettings(db, shop.id, { mode: form.get("mode") === "LIVE" ? "LIVE" : "TEST" });
@@ -81,7 +94,7 @@ export default function Overview() {
         const list: Array<{ handle?: string; activations?: unknown[] }> = await (window as any).shopify.app.extensions();
         const active = list.some((e) => e.handle === EMBED_HANDLE && (e.activations?.length ?? 0) > 0);
         if (!cancelled && active !== d.embedActive) {
-          fetcher.submit({ intent: "embed", active: active ? "1" : "0" }, { method: "post", action: "/app?index" });
+          fetcher.submit({ intent: "embed", active: active ? "1" : "0", domain: d.domain }, { method: "post", action: "/app?index" });
         }
       } catch {
         /* App Bridge unavailable (for example in tests): keep the stored value. */
@@ -112,6 +125,7 @@ export default function Overview() {
         {(d.syncState === "FAILED" || importDone) && (
           <fetcher.Form method="post" action="/app?index">
             <input type="hidden" name="intent" value="rebuild" />
+            <input type="hidden" name="domain" value={d.domain} />
             <s-button type="submit">{t.overview.rebuild}</s-button>
           </fetcher.Form>
         )}
@@ -145,6 +159,7 @@ export default function Overview() {
         <fetcher.Form method="post" action="/app?index">
           <input type="hidden" name="intent" value="mode" />
           <input type="hidden" name="mode" value={live ? "TEST" : "LIVE"} />
+          <input type="hidden" name="domain" value={d.domain} />
           <s-button type="submit" variant={live ? "secondary" : "primary"} disabled={!importDone}>
             {live ? t.overview.backToTest : t.overview.goLive}
           </s-button>
