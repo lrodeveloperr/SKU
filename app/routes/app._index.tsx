@@ -177,7 +177,7 @@ export default function Overview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [d.embedActive]);
 
-  const editorUrl = `https://${d.domain}/admin/themes/current/editor?context=apps&activateAppId=${d.apiKey}/${EMBED_HANDLE}`;
+  const editorUrl = `shopify://admin/themes/current/editor?context=apps&activateAppId=${d.apiKey}/${EMBED_HANDLE}`;
   const actionUrl = `/app?index&domain=${encodeURIComponent(d.domain)}`;
   const importDone = d.syncState === "READY";
   const live = d.mode === "LIVE";
@@ -230,7 +230,7 @@ export default function Overview() {
       <Step title={`3. ${t.overview.stepEmbed}`} done={d.embedActive}>
         <s-paragraph>{d.embedActive ? t.overview.stepEmbedActive : t.overview.stepEmbedBody}</s-paragraph>
         {!d.embedActive && (
-          <s-button href={editorUrl} target="_blank">
+          <s-button href={editorUrl} target="_top">
             {t.overview.openEditor}
           </s-button>
         )}
