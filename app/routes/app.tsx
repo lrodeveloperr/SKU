@@ -5,22 +5,27 @@ import { requireShop } from "../services/session.server";
 import { useT } from "../i18n/use-t";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  if (process.env.SCREENSHOT_MODE === "1") {
+    return { apiKey: process.env.SHOPIFY_API_KEY || "", locale: "en", screenshotMode: true };
+  }
   const { locale } = await requireShop(request);
-  return { apiKey: process.env.SHOPIFY_API_KEY || "", locale };
+  return { apiKey: process.env.SHOPIFY_API_KEY || "", locale, screenshotMode: false };
 };
 
 export default function AppLayout() {
-  const { apiKey } = useLoaderData<typeof loader>();
+  const { apiKey, screenshotMode } = useLoaderData<typeof loader>();
   const { t } = useT();
   return (
     <AppProvider apiKey={apiKey}>
-      <s-app-nav>
-        <s-link href="/app">{t.nav.overview}</s-link>
-        <s-link href="/app/health">{t.nav.health}</s-link>
-        <s-link href="/app/diagnostic">{t.nav.diagnostic}</s-link>
-        <s-link href="/app/analytics">{t.nav.analytics}</s-link>
-        <s-link href="/app/settings">{t.nav.settings}</s-link>
-      </s-app-nav>
+      {!screenshotMode && (
+        <s-app-nav>
+          <s-link href="/app">{t.nav.overview}</s-link>
+          <s-link href="/app/health">{t.nav.health}</s-link>
+          <s-link href="/app/diagnostic">{t.nav.diagnostic}</s-link>
+          <s-link href="/app/analytics">{t.nav.analytics}</s-link>
+          <s-link href="/app/settings">{t.nav.settings}</s-link>
+        </s-app-nav>
+      )}
       <Outlet />
     </AppProvider>
   );

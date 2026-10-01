@@ -4,10 +4,15 @@ import { requireShop } from "../services/session.server";
 import { getIdentifierHealthCached, type VariantRef } from "../services/health.server";
 import { fmt } from "../i18n";
 import { useT } from "../i18n/use-t";
+import { screenshotHealth } from "../services/screenshot-fixtures.server";
+import { WorksBienHealth } from "../worksbien-screens";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  if (process.env.SCREENSHOT_MODE === "1") {
+    return { screenshotMode: true, health: screenshotHealth };
+  }
   const { shop } = await requireShop(request);
-  return { health: await getIdentifierHealthCached(db, shop.id) };
+  return { screenshotMode: false, health: await getIdentifierHealthCached(db, shop.id) };
 };
 
 const numericId = (gid: string) => gid.split("/").pop() ?? "";
@@ -43,10 +48,14 @@ function VariantTable({ rows }: { rows: VariantRef[] }) {
 }
 
 export default function Health() {
-  const { health } = useLoaderData<typeof loader>();
+  const { screenshotMode, health } = useLoaderData<typeof loader>();
   const { t } = useT();
   const c = health.counts;
   const limited = (shown: number, total: number) => (total > shown ? <s-text>{fmt(t.health.showing, { count: shown })}</s-text> : null);
+
+  if (screenshotMode) {
+    return <WorksBienHealth health={health} />;
+  }
 
   return (
     <s-page heading={t.health.title}>

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useFetcher, useLoaderData, useRevalidator, type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
+import { useFetcher, useLoaderData, useRevalidator, useSearchParams, type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
 import { db } from "../db.server";
 import { requireShop } from "../services/session.server";
 import { getIdentifierHealthCached } from "../services/health.server";
@@ -9,6 +9,8 @@ import { getShopByDomain, setEmbedActive, updateShopSettings } from "../services
 import { unauthenticated } from "../shopify.server";
 import { fmt } from "../i18n";
 import { useT } from "../i18n/use-t";
+import { screenshotAnalytics, screenshotHealth, screenshotShop } from "../services/screenshot-fixtures.server";
+import { WorksBienOverview, WorksBienSetup } from "../worksbien-screens";
 
 const EMBED_HANDLE = "exact-search-guard";
 const SHOP_DOMAIN = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
@@ -27,12 +29,30 @@ function domainFromAction(request: Request, form: FormData): string {
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  if (process.env.SCREENSHOT_MODE === "1") {
+    const analytics = screenshotAnalytics(365);
+    return {
+      screenshotMode: true,
+      domain: screenshotShop.domain,
+      apiKey: process.env.SHOPIFY_API_KEY || "",
+      syncState: screenshotShop.syncState,
+      syncError: screenshotShop.syncError,
+      mode: screenshotShop.mode,
+      enabled: screenshotShop.enabled,
+      embedActive: screenshotShop.embedActive,
+      indexed: screenshotHealth.indexedVariants,
+      counts: screenshotHealth.counts,
+      recovered: analytics.recovered,
+      unresolved: analytics.unresolved,
+    };
+  }
   const { shop } = await requireShop(request);
   const ready = shop.syncState === "READY";
   const [health, analytics] = ready
     ? await Promise.all([getIdentifierHealthCached(db, shop.id), getRecoveryAnalytics(db, shop.id, 30)])
     : [null, null];
   return {
+    screenshotMode: false,
     domain: shop.domain,
     apiKey: process.env.SHOPIFY_API_KEY || "",
     syncState: shop.syncState,
@@ -91,6 +111,7 @@ export default function Overview() {
   const { t } = useT();
   const fetcher = useFetcher();
   const revalidator = useRevalidator();
+  const [params] = useSearchParams();
 
   // Poll while the first import runs.
   useEffect(() => {
@@ -122,6 +143,21 @@ export default function Overview() {
   const editorUrl = `https://${d.domain}/admin/themes/current/editor?context=apps&activateAppId=${d.apiKey}/${EMBED_HANDLE}`;
   const importDone = d.syncState === "READY";
   const live = d.mode === "LIVE";
+
+  if (d.screenshotMode) {
+    if (params.get("screen") === "setup") {
+      return <WorksBienSetup />;
+    }
+    return (
+      <WorksBienOverview
+        indexed={d.indexed}
+        counts={d.counts ?? { duplicates: 0, ambiguousAliases: 0, missingSku: 0, missingBarcode: 0 }}
+        recovered={d.recovered}
+        unresolved={d.unresolved}
+        embedActive={d.embedActive}
+      />
+    );
+  }
 
   return (
     <s-page heading={t.overview.title}>

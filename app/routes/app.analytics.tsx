@@ -4,14 +4,19 @@ import { requireShop } from "../services/session.server";
 import { getRecoveryAnalytics } from "../services/analytics.server";
 import { fmt } from "../i18n";
 import { useT } from "../i18n/use-t";
+import { screenshotAnalytics } from "../services/screenshot-fixtures.server";
+import { WorksBienAnalytics } from "../worksbien-screens";
 
-const RANGES = [7, 30, 90];
+const RANGES = [7, 30, 90, 365];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { shop } = await requireShop(request);
   const requested = Number(new URL(request.url).searchParams.get("days"));
   const days = RANGES.includes(requested) ? requested : 30;
-  return { days, analytics: await getRecoveryAnalytics(db, shop.id, days) };
+  if (process.env.SCREENSHOT_MODE === "1") {
+    return { screenshotMode: true, days: 365, analytics: screenshotAnalytics(365) };
+  }
+  const { shop } = await requireShop(request);
+  return { screenshotMode: false, days, analytics: await getRecoveryAnalytics(db, shop.id, days) };
 };
 
 function Stat({ label, value }: { label: string; value: number }) {
@@ -26,8 +31,12 @@ function Stat({ label, value }: { label: string; value: number }) {
 }
 
 export default function Analytics() {
-  const { days, analytics: a } = useLoaderData<typeof loader>();
+  const { screenshotMode, days, analytics: a } = useLoaderData<typeof loader>();
   const { t } = useT();
+
+  if (screenshotMode) {
+    return <WorksBienAnalytics days={days} analytics={a} />;
+  }
 
   return (
     <s-page heading={t.analytics.title}>

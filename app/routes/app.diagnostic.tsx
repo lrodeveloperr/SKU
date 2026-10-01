@@ -4,17 +4,23 @@ import { requireShop } from "../services/session.server";
 import { diagnoseQuery } from "../services/diagnostic.server";
 import { MAX_QUERY_LENGTH } from "../domain/identifiers/normalize";
 import { useT } from "../i18n/use-t";
+import { screenshotDiagnostic } from "../services/screenshot-fixtures.server";
+import { WorksBienDiagnostic } from "../worksbien-screens";
 
 // A GET form keeps the test shareable and needs no action.
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { shop } = await requireShop(request);
   const q = (new URL(request.url).searchParams.get("q") ?? "").slice(0, MAX_QUERY_LENGTH * 2);
+  if (process.env.SCREENSHOT_MODE === "1") {
+    const query = q.trim() ? q : "BK204";
+    return { screenshotMode: true, q: query, diagnostic: screenshotDiagnostic(query) };
+  }
+  const { shop } = await requireShop(request);
   const diagnostic = q.trim() ? await diagnoseQuery(db, shop, q) : null;
-  return { q, diagnostic };
+  return { screenshotMode: false, q, diagnostic };
 };
 
 export default function Diagnostic() {
-  const { q, diagnostic } = useLoaderData<typeof loader>();
+  const { screenshotMode, q, diagnostic } = useLoaderData<typeof loader>();
   const { t } = useT();
   const r = diagnostic?.response;
   const experience = {
@@ -23,6 +29,10 @@ export default function Diagnostic() {
     not_ready: t.diagnostic.liveNotReady,
     live: t.diagnostic.liveOn,
   };
+
+  if (screenshotMode) {
+    return <WorksBienDiagnostic q={q} diagnostic={diagnostic} />;
+  }
 
   return (
     <s-page heading={t.diagnostic.title}>

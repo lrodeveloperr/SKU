@@ -12,6 +12,16 @@ import { startCatalogImport } from "./services/catalog-import.server";
 const DEFAULT_APP_URL = "https://exact-search-guard.worksbienstudios.com";
 
 let shopifyInstance: ReturnType<typeof shopifyApp> | null = null;
+const screenshotSessionStorage = {
+  storeSession: async () => true,
+  loadSession: async () => undefined,
+  deleteSession: async () => true,
+  deleteSessions: async () => true,
+  findSessionsByShop: async () => [],
+};
+
+const appSessionStorage =
+  process.env.SCREENSHOT_MODE === "1" ? (screenshotSessionStorage as unknown as PrismaSessionStorage<typeof db>) : new PrismaSessionStorage(db);
 
 function getShopify() {
   if (shopifyInstance) return shopifyInstance;
@@ -24,7 +34,7 @@ function getShopify() {
     scopes: process.env.SCOPES?.split(","),
     appUrl: process.env.SHOPIFY_APP_URL || DEFAULT_APP_URL,
     authPathPrefix: "/auth",
-    sessionStorage: new PrismaSessionStorage(db),
+    sessionStorage: appSessionStorage,
     distribution: AppDistribution.AppStore,
     hooks: {
       afterAuth: async ({ session, admin }) => {
@@ -57,7 +67,7 @@ export const unauthenticated = {
 };
 export const login = (...args: Parameters<ReturnType<typeof shopifyApp>["login"]>) =>
   getShopify().login(...args);
-export const sessionStorage = new PrismaSessionStorage(db);
+export const sessionStorage = appSessionStorage;
 export const addDocumentResponseHeaders: ReturnType<typeof shopifyApp>["addDocumentResponseHeaders"] = (...args) => {
   try {
     return getShopify().addDocumentResponseHeaders(...args);
