@@ -1,7 +1,7 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, type LinksFunction } from "react-router";
-import worksbienStyles from "./worksbien.css?url";
+import appStorePreviewStyles from "./app-store-preview.css?url";
 
-export const links: LinksFunction = () => [{ rel: "stylesheet", href: worksbienStyles }];
+export const links: LinksFunction = () => [{ rel: "stylesheet", href: appStorePreviewStyles }];
 
 export default function App() {
   return (

@@ -8,6 +8,7 @@ import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prism
 import { db } from "./db.server";
 import { ensureShop } from "./services/shops.server";
 import { startCatalogImport } from "./services/catalog-import.server";
+import { isScreenshotMode } from "./services/screenshot-mode.server";
 
 const DEFAULT_APP_URL = "https://exact-search-guard.worksbienstudios.com";
 
@@ -21,7 +22,7 @@ const screenshotSessionStorage = {
 };
 
 const appSessionStorage =
-  process.env.SCREENSHOT_MODE === "1" ? (screenshotSessionStorage as unknown as PrismaSessionStorage<typeof db>) : new PrismaSessionStorage(db);
+  isScreenshotMode() ? (screenshotSessionStorage as unknown as PrismaSessionStorage<typeof db>) : new PrismaSessionStorage(db);
 
 function getShopify() {
   if (shopifyInstance) return shopifyInstance;

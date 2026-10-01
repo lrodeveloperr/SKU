@@ -2,10 +2,11 @@ import { Outlet, useLoaderData, useRouteError, type HeadersFunction, type Loader
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { requireShop } from "../services/session.server";
+import { isScreenshotMode } from "../services/screenshot-mode.server";
 import { useT } from "../i18n/use-t";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  if (process.env.SCREENSHOT_MODE === "1") {
+  if (isScreenshotMode()) {
     return { apiKey: process.env.SHOPIFY_API_KEY || "", locale: "en", screenshotMode: true };
   }
   const { locale } = await requireShop(request);

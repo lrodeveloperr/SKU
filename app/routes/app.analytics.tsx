@@ -5,14 +5,15 @@ import { getRecoveryAnalytics } from "../services/analytics.server";
 import { fmt } from "../i18n";
 import { useT } from "../i18n/use-t";
 import { screenshotAnalytics } from "../services/screenshot-fixtures.server";
-import { WorksBienAnalytics } from "../worksbien-screens";
+import { isScreenshotMode } from "../services/screenshot-mode.server";
+import { AppStorePreviewAnalytics } from "../app-store-preview-screens";
 
 const RANGES = [7, 30, 90, 365];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const requested = Number(new URL(request.url).searchParams.get("days"));
   const days = RANGES.includes(requested) ? requested : 30;
-  if (process.env.SCREENSHOT_MODE === "1") {
+  if (isScreenshotMode()) {
     return { screenshotMode: true, days: 365, analytics: screenshotAnalytics(365) };
   }
   const { shop } = await requireShop(request);
@@ -35,7 +36,7 @@ export default function Analytics() {
   const { t } = useT();
 
   if (screenshotMode) {
-    return <WorksBienAnalytics days={days} analytics={a} />;
+    return <AppStorePreviewAnalytics days={days} analytics={a} />;
   }
 
   return (

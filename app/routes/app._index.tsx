@@ -10,7 +10,8 @@ import { unauthenticated } from "../shopify.server";
 import { fmt } from "../i18n";
 import { useT } from "../i18n/use-t";
 import { screenshotAnalytics, screenshotHealth, screenshotShop } from "../services/screenshot-fixtures.server";
-import { WorksBienOverview, WorksBienSetup } from "../worksbien-screens";
+import { isScreenshotMode } from "../services/screenshot-mode.server";
+import { AppStorePreviewOverview, AppStorePreviewSetup } from "../app-store-preview-screens";
 
 const EMBED_HANDLE = "exact-search-guard";
 const SHOP_DOMAIN = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
@@ -29,7 +30,7 @@ function domainFromAction(request: Request, form: FormData): string {
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  if (process.env.SCREENSHOT_MODE === "1") {
+  if (isScreenshotMode()) {
     const analytics = screenshotAnalytics(365);
     return {
       screenshotMode: true,
@@ -146,10 +147,10 @@ export default function Overview() {
 
   if (d.screenshotMode) {
     if (params.get("screen") === "setup") {
-      return <WorksBienSetup />;
+      return <AppStorePreviewSetup />;
     }
     return (
-      <WorksBienOverview
+      <AppStorePreviewOverview
         indexed={d.indexed}
         counts={d.counts ?? { duplicates: 0, ambiguousAliases: 0, missingSku: 0, missingBarcode: 0 }}
         recovered={d.recovered}

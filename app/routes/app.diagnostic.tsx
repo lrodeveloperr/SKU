@@ -5,12 +5,13 @@ import { diagnoseQuery } from "../services/diagnostic.server";
 import { MAX_QUERY_LENGTH } from "../domain/identifiers/normalize";
 import { useT } from "../i18n/use-t";
 import { screenshotDiagnostic } from "../services/screenshot-fixtures.server";
-import { WorksBienDiagnostic } from "../worksbien-screens";
+import { isScreenshotMode } from "../services/screenshot-mode.server";
+import { AppStorePreviewDiagnostic } from "../app-store-preview-screens";
 
 // A GET form keeps the test shareable and needs no action.
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const q = (new URL(request.url).searchParams.get("q") ?? "").slice(0, MAX_QUERY_LENGTH * 2);
-  if (process.env.SCREENSHOT_MODE === "1") {
+  if (isScreenshotMode()) {
     const query = q.trim() ? q : "BK204";
     return { screenshotMode: true, q: query, diagnostic: screenshotDiagnostic(query) };
   }
@@ -31,7 +32,7 @@ export default function Diagnostic() {
   };
 
   if (screenshotMode) {
-    return <WorksBienDiagnostic q={q} diagnostic={diagnostic} />;
+    return <AppStorePreviewDiagnostic q={q} diagnostic={diagnostic} />;
   }
 
   return (

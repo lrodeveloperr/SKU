@@ -5,10 +5,11 @@ import { getIdentifierHealthCached, type VariantRef } from "../services/health.s
 import { fmt } from "../i18n";
 import { useT } from "../i18n/use-t";
 import { screenshotHealth } from "../services/screenshot-fixtures.server";
-import { WorksBienHealth } from "../worksbien-screens";
+import { isScreenshotMode } from "../services/screenshot-mode.server";
+import { AppStorePreviewHealth } from "../app-store-preview-screens";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  if (process.env.SCREENSHOT_MODE === "1") {
+  if (isScreenshotMode()) {
     return { screenshotMode: true, health: screenshotHealth };
   }
   const { shop } = await requireShop(request);
@@ -54,7 +55,7 @@ export default function Health() {
   const limited = (shown: number, total: number) => (total > shown ? <s-text>{fmt(t.health.showing, { count: shown })}</s-text> : null);
 
   if (screenshotMode) {
-    return <WorksBienHealth health={health} />;
+    return <AppStorePreviewHealth health={health} />;
   }
 
   return (

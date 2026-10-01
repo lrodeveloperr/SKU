@@ -4,18 +4,18 @@ import type { RecoveryAnalytics } from "./services/analytics.server";
 
 type HealthCounts = IdentifierHealth["counts"];
 
-export function WorksBienShell(props: { eyebrow: string; title: string; intro: string; children: React.ReactNode; aside?: React.ReactNode }) {
+export function AppStorePreviewShell(props: { eyebrow: string; title: string; intro: string; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
     <main className="wb-screen">
       <header className="wb-header">
         <div className="wb-brand">
           <strong>Exact Search Guard</strong>
         </div>
-        <nav className="wb-nav" aria-label="Screenshot navigation">
-          <a href="/app/diagnostic">Support</a>
-          <a href="/app">About</a>
+        <nav className="wb-nav" aria-label="Preview navigation">
+          <a href="/support">Support</a>
+          <a href="/about">About</a>
           <a href="/privacy">Privacy</a>
-          <a href="/privacy">Terms</a>
+          <a href="/terms">Terms</a>
         </nav>
       </header>
       <section className="wb-hero">
@@ -89,9 +89,9 @@ export function SearchPreview() {
   );
 }
 
-export function WorksBienOverview(props: { indexed: number; counts: HealthCounts; recovered: number; unresolved: number; embedActive: boolean }) {
+export function AppStorePreviewOverview(props: { indexed: number; counts: HealthCounts; recovered: number; unresolved: number; embedActive: boolean }) {
   return (
-    <WorksBienShell
+    <AppStorePreviewShell
       eyebrow="Exact Search Guard"
       title="Exact SKU search, without the mess."
       intro="A focused Shopify app for stores where product codes, part numbers, and SKUs need to land on the right item the first time."
@@ -103,16 +103,16 @@ export function WorksBienOverview(props: { indexed: number; counts: HealthCounts
           <p>Private by default. Built for real merchandising work.</p>
         </article>
         <MetricCard label="Indexed variants" value={props.indexed} note="ready for exact matching" />
-        <MetricCard label="Recovered" value={props.recovered} note="last 30 days" tone="green" />
+        <MetricCard label="Recovered" value={props.recovered} note="last 12 months" tone="green" />
         <MetricCard label="Unresolved" value={props.unresolved} note="needs review" tone="amber" />
       </section>
-    </WorksBienShell>
+    </AppStorePreviewShell>
   );
 }
 
-export function WorksBienSetup() {
+export function AppStorePreviewSetup() {
   return (
-    <WorksBienShell
+    <AppStorePreviewShell
       eyebrow="Store setup"
       title="Turn messy codes into useful search."
       intro="Index SKUs, barcodes, handles, and aliases. Keep native search as the fallback, not the failure mode."
@@ -132,14 +132,14 @@ export function WorksBienSetup() {
           <p>Let Shopify search handle everything else.</p>
         </article>
       </section>
-    </WorksBienShell>
+    </AppStorePreviewShell>
   );
 }
 
-export function WorksBienHealth(props: { health: IdentifierHealth }) {
+export function AppStorePreviewHealth(props: { health: IdentifierHealth }) {
   const c = props.health.counts;
   return (
-    <WorksBienShell
+    <AppStorePreviewShell
       eyebrow="Catalog confidence"
       title="Find the identifier problems before shoppers do."
       intro={`Safe demo data across one fictitious year: ${props.health.indexedVariants.toLocaleString()} indexed variants and ${(
@@ -164,7 +164,7 @@ export function WorksBienHealth(props: { health: IdentifierHealth }) {
         <h2>Simple maintenance loop</h2>
         <p>Review duplicates, fill missing SKUs, rerun the index, and keep exact-code search trustworthy.</p>
       </section>
-    </WorksBienShell>
+    </AppStorePreviewShell>
   );
 }
 
@@ -178,11 +178,11 @@ function IssueRow(props: { label: string; value: number; tone: "amber" | "red" |
   );
 }
 
-export function WorksBienDiagnostic(props: { q: string; diagnostic: Diagnostic | null }) {
+export function AppStorePreviewDiagnostic(props: { q: string; diagnostic: Diagnostic | null }) {
   const query = props.q || "BK204";
   const match = props.diagnostic?.response.matches?.[0];
   return (
-    <WorksBienShell
+    <AppStorePreviewShell
       eyebrow="Test search"
       title="Prove a product code works before it goes live."
       intro="Run exact-code checks against fictitious catalogue examples without exposing real merchant data."
@@ -226,16 +226,16 @@ export function WorksBienDiagnostic(props: { q: string; diagnostic: Diagnostic |
         </div>
         <p>Matched {match?.title ?? "BK-2049 Brake Pad Kit"} by normalized SKU.</p>
       </BrowserCard>
-    </WorksBienShell>
+    </AppStorePreviewShell>
   );
 }
 
-export function WorksBienAnalytics(props: { days: number; analytics: RecoveryAnalytics }) {
+export function AppStorePreviewAnalytics(props: { days: number; analytics: RecoveryAnalytics }) {
   const a = props.analytics;
   const monthValues = [238, 265, 290, 318, 301, 355, 382, 401, 426, 372, 470, 468];
   const max = Math.max(...monthValues);
   return (
-    <WorksBienShell
+    <AppStorePreviewShell
       eyebrow="One-year recovery"
       title="See where exact search is saving orders."
       intro="Fictitious trailing-year data highlights recovered searches, duplicate chooser usage, and unresolved code opportunities."
@@ -269,6 +269,6 @@ export function WorksBienAnalytics(props: { days: number; analytics: RecoveryAna
         <MetricCard label="Unresolved" value={a.unresolved} tone="amber" />
         <MetricCard label="Events" value={a.timeouts + a.errors} tone="red" />
       </section>
-    </WorksBienShell>
+    </AppStorePreviewShell>
   );
 }
