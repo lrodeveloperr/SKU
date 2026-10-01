@@ -37,6 +37,9 @@ function getShopify() {
     authPathPrefix: "/auth",
     sessionStorage: appSessionStorage,
     distribution: AppDistribution.AppStore,
+    future: {
+      expiringOfflineAccessTokens: true,
+    },
     hooks: {
       afterAuth: async ({ session, admin }) => {
         const shop = await ensureShop(db, session.shop);
