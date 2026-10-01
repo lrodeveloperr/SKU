@@ -95,13 +95,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const { admin } = await unauthenticated.admin(domain);
     context = { admin, shop };
   }
-  const { admin, shop } = context;
+  const { shop } = context;
   switch (intent) {
     case "mode":
       await updateShopSettings(db, shop.id, { mode: actionValue(form, url, "mode") === "LIVE" ? "LIVE" : "TEST" });
       break;
     case "rebuild":
-      await startCatalogImport(db, admin, shop);
+      {
+        const { admin: offlineAdmin } = await unauthenticated.admin(shop.domain);
+        await startCatalogImport(db, offlineAdmin, shop);
+      }
       break;
     case "embed":
       await setEmbedActive(db, shop.id, actionValue(form, url, "active") === "1");
