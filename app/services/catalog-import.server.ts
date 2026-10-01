@@ -1,5 +1,5 @@
 import type { PrismaClient, Shop } from "@prisma/client";
-import { adminQuery, errorMessage, isThrownResponse, type AdminClient } from "./admin.server";
+import { adminQuery, errorMessage, type AdminClient } from "./admin.server";
 import { invalidateShop } from "./cache.server";
 import { insertProducts } from "./catalog-store.server";
 import {
@@ -38,7 +38,6 @@ export async function startCatalogImport(
     await db.shop.update({ where: { id: shop.id }, data: { syncState: "IMPORTING", syncError: null } });
     return { jobId: job.id };
   } catch (err) {
-    if (isThrownResponse(err)) throw err;
     await failImport(db, shop.id, job.id, err);
     return { error: errorMessage(err) };
   }

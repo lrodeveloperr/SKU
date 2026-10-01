@@ -17,10 +17,23 @@ describe("adminQuery", () => {
       ),
     ).rejects.toThrow("Admin API error: Access denied (products.edges)");
   });
+
+  it("formats thrown Shopify HTTP responses into readable messages", async () => {
+    await expect(
+      adminQuery(
+        {
+          graphql: async () => {
+            throw new Response(JSON.stringify({ errors: "bad query" }), { status: 400, statusText: "Bad Request" });
+          },
+        },
+        "query { nope }",
+      ),
+    ).rejects.toThrow('Admin API HTTP 400 Bad Request: {"errors":"bad query"}');
+  });
 });
 
 describe("startCatalogImport", () => {
-  it("rethrows Shopify response control flow instead of storing it as a failed import", async () => {
+  it("stores readable Shopify response failures instead of [object Response]", async () => {
     const updates: unknown[] = [];
     const db = {
       syncJob: {
@@ -32,15 +45,17 @@ describe("startCatalogImport", () => {
         findUnique: async () => ({ id: "shop-1", lastSyncedAt: null }),
       },
     };
-    const response = new Response("reauth", { status: 302, statusText: "Found" });
 
     await expect(
       startCatalogImport(
         db as never,
-        { graphql: async () => { throw response; } },
+        { graphql: async () => { throw new Response("bad query", { status: 400, statusText: "Bad Request" }); } },
         { id: "shop-1", modelMetafieldNamespace: null, modelMetafieldKey: null } as never,
       ),
-    ).rejects.toBe(response);
-    expect(updates).toEqual([]);
+    ).resolves.toEqual({ error: "Admin API HTTP 400 Bad Request: bad query" });
+    expect(updates).toContainEqual({
+      where: { id: "job-1" },
+      data: expect.objectContaining({ status: "FAILED", error: "Admin API HTTP 400 Bad Request: bad query" }),
+    });
   });
 });

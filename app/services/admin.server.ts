@@ -31,13 +31,30 @@ export function isThrownResponse(error: unknown): error is Response {
   return typeof Response !== "undefined" && error instanceof Response;
 }
 
+async function responseError(response: Response): Promise<AdminApiError> {
+  let details = "";
+  try {
+    details = await response.clone().text();
+  } catch {
+    details = "";
+  }
+  const suffix = details ? `: ${details.slice(0, 500)}` : "";
+  return new AdminApiError(`Admin API HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""}${suffix}`);
+}
+
 /** Runs a query and returns `data`, throwing on GraphQL-level errors. */
 export async function adminQuery<T = any>(
   admin: AdminClient,
   query: string,
   variables?: Record<string, unknown>,
 ): Promise<T> {
-  const response = await admin.graphql(query, variables ? { variables } : undefined);
+  let response: { json(): Promise<any> };
+  try {
+    response = await admin.graphql(query, variables ? { variables } : undefined);
+  } catch (error) {
+    if (isThrownResponse(error)) throw await responseError(error);
+    throw error;
+  }
   const body = await response.json();
   if (body.errors && (!Array.isArray(body.errors) || body.errors.length > 0)) {
     const errors = Array.isArray(body.errors) ? body.errors.map(formatGraphQLError).join("; ") : formatGraphQLError(body.errors);
