@@ -111,7 +111,7 @@ model CatalogVariant {
   variantTitle     String
   sku              String?
   barcode          String?
-  published        Boolean // visible on the Online Store
+  published        Boolean // eligible for storefront lookup
   inStock          Boolean
   productUpdatedAt DateTime // Shopify updatedAt of the product at sync time
   syncedAt         DateTime @default(now())

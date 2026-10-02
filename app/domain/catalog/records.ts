@@ -15,7 +15,7 @@ export interface ProductRecord {
   handle: string;
   title: string;
   status: string;
-  /** Visible on the Online Store. */
+  /** Eligible for storefront redirects; only active products are indexed. */
   published: boolean;
   updatedAt: Date;
   variants: VariantRecord[];
@@ -130,7 +130,7 @@ export function productFromGql(p: GqlProduct, variants: GqlVariant[]): ProductRe
     handle: p.handle,
     title: p.title,
     status: p.status,
-    published: Boolean(p.onlineStoreUrl),
+    published: p.status === "ACTIVE",
     updatedAt: new Date(p.updatedAt),
     variants: variants.map((v) => variantFromGql(v, productModel)),
   };

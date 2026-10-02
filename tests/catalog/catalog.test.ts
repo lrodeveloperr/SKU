@@ -57,7 +57,7 @@ describe("records", () => {
     const entries = toEntryRows(first!).map((e) => `${e.variantId.split("/").pop()}:${e.type}:${e.spaced}`);
     expect(entries.sort()).toEqual(["11:BARCODE:0123", "11:MODEL:model-1", "11:SKU:sku-11", "12:MODEL:vm-12"]);
 
-    expect(toVariantRows(second!)[0]).toMatchObject({ published: false, inStock: false });
+    expect(toVariantRows(second!)[0]).toMatchObject({ published: true, inStock: false });
   });
 
   it("does not index non-active products", async () => {
