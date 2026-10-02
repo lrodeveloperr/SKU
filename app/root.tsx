@@ -8,6 +8,7 @@ const POLARIS_URL = "https://cdn.shopify.com/shopifycloud/polaris.js";
 
 export const loader = ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
+  // App Bridge needs to load from the document head before route effects inspect window.shopify.
   return {
     appBridgeApiKey: url.pathname.startsWith("/app") ? process.env.SHOPIFY_API_KEY || "" : "",
   };
