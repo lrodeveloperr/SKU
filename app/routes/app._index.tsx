@@ -18,8 +18,9 @@ const EMBED_HANDLE = "exact-search-guard";
 const SHOP_DOMAIN = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
 const APP_BRIDGE_RETRIES = 20;
 const APP_BRIDGE_RETRY_MS = 250;
+const EMBED_TARGETS = new Set(["head", "body", "compliance_head"]);
 
-type ThemeActivation = { handle?: string; status?: string; activations?: unknown[] };
+type ThemeActivation = { handle?: string; status?: string; target?: string; activations?: unknown[] };
 type AppExtension = { handle?: string; type?: string; activations?: unknown[] };
 type ShopifyBridge = { app?: { extensions?: () => Promise<AppExtension[]> } };
 
@@ -61,7 +62,12 @@ function hasActiveThemeEmbed(extension: AppExtension): boolean {
 
   return (extension.activations ?? []).some((activation) => {
     const record = activationRecord(activation);
-    return record?.handle === EMBED_HANDLE && record.status === "active" && (record.activations?.length ?? 0) > 0;
+    return (
+      record?.handle === EMBED_HANDLE &&
+      record.status === "active" &&
+      EMBED_TARGETS.has(record.target ?? "") &&
+      (record.activations?.length ?? 0) > 0
+    );
   });
 }
 
