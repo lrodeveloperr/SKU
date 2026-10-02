@@ -121,6 +121,8 @@ model CatalogVariant {
 
   @@id([shopId, id])
   @@index([shopId, productId])
+  @@index([shopId, sku])
+  @@index([shopId, barcode])
   @@index([shopId, syncedAt])
 }
 

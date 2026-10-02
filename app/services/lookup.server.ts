@@ -1,4 +1,4 @@
-import type { PrismaClient, Shop } from "@prisma/client";
+import type { CatalogVariant, PrismaClient, Shop } from "@prisma/client";
 import {
   productPath,
   resolveIdentifier,
@@ -8,13 +8,57 @@ import {
   type MatchStage,
   type ResolvedMatch,
 } from "../domain/identifiers/lookup";
-import { classifyQuery } from "../domain/identifiers/normalize";
+import { classifyQuery, normalizeIdentifier, type IdentifierType } from "../domain/identifiers/normalize";
 import { lookupCache, shopVersion, shopConfigCache } from "./cache.server";
 import { recordSearchEvent } from "./search-events.server";
 
 /** Server-side budget; the storefront script enforces its own 150 ms abort. */
 export const LOOKUP_TIMEOUT_MS = 120;
 const MAX_CANDIDATE_ROWS = 50;
+
+type CatalogVariantFallbackRow = Pick<
+  CatalogVariant,
+  "id" | "legacyId" | "productId" | "handle" | "productTitle" | "variantTitle" | "sku" | "barcode" | "inStock"
+>;
+
+function identifierEquals(stage: MatchStage, key: string) {
+  return stage === "original" ? { equals: key } : { equals: key, mode: "insensitive" as const };
+}
+
+export function candidatesFromCatalogVariants(
+  rows: CatalogVariantFallbackRow[],
+  stage: MatchStage,
+  key: string,
+): IdentifierCandidate[] {
+  const candidates: IdentifierCandidate[] = [];
+
+  for (const row of rows) {
+    const identifiers: Array<[IdentifierType, string | null]> = [
+      ["SKU", row.sku],
+      ["BARCODE", row.barcode],
+    ];
+
+    for (const [type, value] of identifiers) {
+      if (!value) continue;
+      const normalized = normalizeIdentifier(value);
+      if (normalized[stage] !== key) continue;
+
+      candidates.push({
+        type,
+        variantId: row.id,
+        variantLegacyId: row.legacyId,
+        productId: row.productId,
+        handle: row.handle,
+        productTitle: row.productTitle,
+        variantTitle: row.variantTitle,
+        spaced: normalized.spaced,
+        inStock: row.inStock,
+      });
+    }
+  }
+
+  return candidates;
+}
 
 export class PrismaIdentifierStore implements IdentifierStore {
   constructor(
@@ -33,17 +77,45 @@ export class PrismaIdentifierStore implements IdentifierStore {
       include: { variant: true },
       take: MAX_CANDIDATE_ROWS,
     });
-    return rows.map((r) => ({
-      type: r.type,
-      variantId: r.variantId,
-      variantLegacyId: r.variant.legacyId,
-      productId: r.variant.productId,
-      handle: r.variant.handle,
-      productTitle: r.variant.productTitle,
-      variantTitle: r.variant.variantTitle,
-      spaced: r.spaced,
-      inStock: r.variant.inStock,
-    }));
+    if (rows.length > 0) {
+      return rows.map((r) => ({
+        type: r.type,
+        variantId: r.variantId,
+        variantLegacyId: r.variant.legacyId,
+        productId: r.variant.productId,
+        handle: r.variant.handle,
+        productTitle: r.variant.productTitle,
+        variantTitle: r.variant.variantTitle,
+        spaced: r.spaced,
+        inStock: r.variant.inStock,
+      }));
+    }
+
+    if (stage === "compact") return [];
+
+    const match = identifierEquals(stage, key);
+    const variants = await this.db.catalogVariant.findMany({
+      where: {
+        shopId: this.shopId,
+        published: true,
+        ...(options.excludeOutOfStock ? { inStock: true } : {}),
+        OR: [{ sku: match }, { barcode: match }],
+      },
+      select: {
+        id: true,
+        legacyId: true,
+        productId: true,
+        handle: true,
+        productTitle: true,
+        variantTitle: true,
+        sku: true,
+        barcode: true,
+        inStock: true,
+      },
+      take: MAX_CANDIDATE_ROWS,
+    });
+
+    return candidatesFromCatalogVariants(variants, stage, key);
   }
 }
 

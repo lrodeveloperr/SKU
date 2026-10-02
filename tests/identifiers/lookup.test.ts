@@ -21,8 +21,8 @@ describe("resolveIdentifier", () => {
 
   it("matches case-insensitively and ignores surrounding whitespace", async () => {
     const store = new MemoryStore([sku("AB-123", "v1")]);
-    expect((await resolveIdentifier(store, "ab-123", opts)).status).toBe("match");
-    expect((await resolveIdentifier(store, "  AB-123  ", opts)).status).toBe("match");
+    expect(await resolveIdentifier(store, "ab-123", opts)).toMatchObject({ status: "match", stage: "folded" });
+    expect(await resolveIdentifier(store, "  AB-123  ", opts)).toMatchObject({ status: "match", stage: "spaced" });
   });
 
   it("resolves a compact alias only when it is unique", async () => {
@@ -67,8 +67,7 @@ describe("resolveIdentifier", () => {
   it("does not repeat identical queries across stages", async () => {
     const store = new MemoryStore([]);
     await resolveIdentifier(store, "abc123", opts);
-    // original, folded and spaced all share a key here; only distinct keys are queried.
-    expect(store.calls.length).toBeLessThanOrEqual(4);
+    expect(new Set(store.calls.map(([stage, key]) => `${stage}:${key}`)).size).toBe(store.calls.length);
   });
 
   it("excludes out-of-stock variants before judging uniqueness", async () => {

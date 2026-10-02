@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { lookupForShop, resolveForShop } from "../../app/services/lookup.server";
+import { candidatesFromCatalogVariants, lookupForShop, resolveForShop } from "../../app/services/lookup.server";
 import { lookupCache, shopConfigCache, invalidateShop } from "../../app/services/cache.server";
 import { RateLimiter, hashClient } from "../../app/services/rate-limit.server";
 import { MemoryStore } from "../helpers";
@@ -45,12 +45,16 @@ describe("resolveForShop", () => {
   });
 });
 
-function fakeDb(findMany: () => Promise<unknown[]>) {
+function fakeDb(
+  findMany: () => Promise<unknown[]>,
+  findManyVariants: () => Promise<unknown[]> = async () => [],
+) {
   const events: any[] = [];
   return {
     events,
     db: {
       identifierEntry: { findMany },
+      catalogVariant: { findMany: findManyVariants },
       searchEvent: { create: async ({ data }: any) => void events.push(data) },
     } as never,
   };
@@ -107,6 +111,54 @@ describe("lookupForShop", () => {
     await lookupForShop(db, shopRow, { query: "ZZ-999", preview: false });
     await new Promise((r) => setTimeout(r, 0));
     expect(events.map((e) => e.query)).toEqual([null, "ZZ-999"]);
+  });
+
+  it("falls back to catalog variants when identifier index rows are missing", async () => {
+    const { db } = fakeDb(
+      async () => [],
+      async () => [
+        {
+          id: "gid://shopify/ProductVariant/1",
+          legacyId: "1",
+          productId: "gid://shopify/Product/1",
+          handle: "snowboard",
+          productTitle: "Snowboard",
+          variantTitle: "Default",
+          sku: "sku-managed-1",
+          barcode: null,
+          inStock: true,
+        },
+      ],
+    );
+
+    const r = await lookupForShop(db, shopRow, { query: "sku-managed-1", preview: false });
+    expect(r).toMatchObject({
+      status: "match",
+      matches: [{ url: "/products/snowboard?variant=1", identifierTypes: ["SKU"] }],
+    });
+  });
+});
+
+describe("candidatesFromCatalogVariants", () => {
+  it("preserves SKU and barcode types from catalog rows", () => {
+    const rows = [
+      {
+        id: "v1",
+        legacyId: "1",
+        productId: "p1",
+        handle: "widget",
+        productTitle: "Widget",
+        variantTitle: "Default",
+        sku: "AB-123",
+        barcode: "AB-123",
+        inStock: true,
+      },
+    ];
+
+    expect(candidatesFromCatalogVariants(rows, "folded", "ab-123").map((c) => c.type).sort()).toEqual([
+      "BARCODE",
+      "SKU",
+    ]);
   });
 });
 

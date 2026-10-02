@@ -80,8 +80,8 @@ export async function resolveIdentifier(
   let ambiguous = false;
 
   for (const [stage, key] of stages) {
-    // Identical keys across stages (the common case) would re-run the same query.
-    const dedupeKey = `${stage === "compact" ? "c" : "x"}:${key}`;
+    // Stages can share the same key text while querying different index columns.
+    const dedupeKey = `${stage}:${key}`;
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
 
