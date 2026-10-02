@@ -19,7 +19,8 @@ const SHOP_DOMAIN = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
 const APP_BRIDGE_RETRIES = 20;
 const APP_BRIDGE_RETRY_MS = 250;
 
-type AppExtension = { handle?: string; activations?: unknown[] };
+type ThemeActivation = { handle?: string; status?: string; activations?: unknown[] };
+type AppExtension = { handle?: string; type?: string; activations?: unknown[] };
 type ShopifyBridge = { app?: { extensions?: () => Promise<AppExtension[]> } };
 
 function delay(ms: number) {
@@ -47,6 +48,21 @@ async function loadAppExtensions(isCancelled: () => boolean): Promise<AppExtensi
   }
 
   return null;
+}
+
+function activationRecord(value: unknown): ThemeActivation | null {
+  return value && typeof value === "object" ? (value as ThemeActivation) : null;
+}
+
+function hasActiveThemeEmbed(extension: AppExtension): boolean {
+  if (extension.type !== "theme_app_extension") {
+    return extension.handle === EMBED_HANDLE && (extension.activations?.length ?? 0) > 0;
+  }
+
+  return (extension.activations ?? []).some((activation) => {
+    const record = activationRecord(activation);
+    return record?.handle === EMBED_HANDLE && record.status === "active" && (record.activations?.length ?? 0) > 0;
+  });
 }
 
 async function safeFormData(request: Request): Promise<FormData> {
@@ -189,7 +205,7 @@ export default function Overview() {
       const list = await loadAppExtensions(() => cancelled);
       if (!list) return;
 
-      const active = list.some((e) => e.handle === EMBED_HANDLE && (e.activations?.length ?? 0) > 0);
+      const active = list.some(hasActiveThemeEmbed);
       if (!cancelled && active !== d.embedActive) {
         const nextActive = active ? "1" : "0";
         fetcher.submit(

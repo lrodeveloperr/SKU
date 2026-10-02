@@ -1,23 +1,35 @@
-import { Outlet, useLoaderData, useRouteError, type HeadersFunction, type LoaderFunctionArgs } from "react-router";
+import { useEffect } from "react";
+import { Outlet, useLoaderData, useNavigate, useRouteError, type HeadersFunction, type LoaderFunctionArgs } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { requireShop } from "../services/session.server";
 import { isScreenshotMode } from "../services/screenshot-mode.server";
 import { useT } from "../i18n/use-t";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (isScreenshotMode()) {
-    return { apiKey: process.env.SHOPIFY_API_KEY || "", locale: "en", screenshotMode: true };
+    return { locale: "en", screenshotMode: true };
   }
   const { locale } = await requireShop(request);
-  return { apiKey: process.env.SHOPIFY_API_KEY || "", locale, screenshotMode: false };
+  return { locale, screenshotMode: false };
 };
 
 export default function AppLayout() {
-  const { apiKey, screenshotMode } = useLoaderData<typeof loader>();
+  const { screenshotMode } = useLoaderData<typeof loader>();
+  const navigate = useNavigate();
   const { t } = useT();
+
+  useEffect(() => {
+    const handleNavigate = (event: Event) => {
+      const href = (event.target as HTMLElement | null)?.getAttribute("href");
+      if (href) navigate(href);
+    };
+
+    document.addEventListener("shopify:navigate", handleNavigate);
+    return () => document.removeEventListener("shopify:navigate", handleNavigate);
+  }, [navigate]);
+
   return (
-    <AppProvider apiKey={apiKey}>
+    <>
       {!screenshotMode && (
         <s-app-nav>
           <s-link href="/app">{t.nav.overview}</s-link>
@@ -28,7 +40,7 @@ export default function AppLayout() {
         </s-app-nav>
       )}
       <Outlet />
-    </AppProvider>
+    </>
   );
 }
 
