@@ -65,6 +65,10 @@ Use all five fields if available:
 - Test search screenshot: Diagnostic screen showing a verified SKU search result.
 - Recovery analytics screenshot: Analytics dashboard showing exact-code search recoveries and unresolved searches.
 
+## Reviewer access and billing
+
+Use the updated testing instructions and release checklist in `docs/app-review-fixes-2026-10-15.md`. The app uses Shopify authentication and has no separate account. The four pricing plans are selected through Shopify App Pricing, with verified subscription status shown in Plans and billing. Complete the live checklist before using the prepared resubmission response.
+
 ## Rejected Draft Language
 
 Avoid the older phrase: "Make every exact SKU, barcode and model-number search reach the right Shopify product without replacing your search engine."

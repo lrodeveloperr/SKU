@@ -1,5 +1,8 @@
 import type { OutOfStockMode, PrismaClient, Shop, ShopMode } from "@prisma/client";
 import { invalidateShop } from "./cache.server";
+import { canServeCatalog } from "../domain/billing";
+
+export class BillingAccessError extends Error {}
 
 export async function ensureShop(db: PrismaClient, domain: string): Promise<Shop> {
   return db.shop.upsert({ where: { domain }, create: { domain }, update: {} });
@@ -32,6 +35,10 @@ export async function updateShopSettings(
   input: ShopSettingsInput,
 ): Promise<SettingsResult> {
   const current = await db.shop.findUniqueOrThrow({ where: { id: shopId } });
+  if (input.mode === "LIVE") {
+    const used = await db.catalogVariant.count({ where: { shopId } });
+    if (!canServeCatalog(current, used)) throw new BillingAccessError("Select a plan that covers your catalog before going live.");
+  }
   const data: Record<string, unknown> = {};
   if (input.mode) data.mode = input.mode;
   if (input.enabled !== undefined) data.enabled = input.enabled;

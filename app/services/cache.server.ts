@@ -45,6 +45,7 @@ class TtlCache<V> {
 
 export const shopConfigCache = new TtlCache<unknown>(30_000, 1_000);
 export const lookupCache = new TtlCache<unknown>(30_000, 20_000);
+export const catalogSizeCache = new TtlCache<number>(30_000, 1_000);
 
 const versions = new Map<string, number>();
 export const shopVersion = (domain: string) => versions.get(domain) ?? 0;
@@ -53,6 +54,7 @@ export const shopVersion = (domain: string) => versions.get(domain) ?? 0;
 export function invalidateShop(domain: string): void {
   versions.set(domain, shopVersion(domain) + 1);
   shopConfigCache.deleteWhere((k) => k === domain);
+  catalogSizeCache.deleteWhere((k) => k === domain);
   lookupCache.deleteWhere((k) => k.startsWith(`${domain}\u0000`));
 }
 

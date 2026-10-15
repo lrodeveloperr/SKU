@@ -79,6 +79,15 @@ model Shop {
   id                      String         @id @default(cuid())
   domain                  String         @unique
   plan                    String         @default("development")
+  shopifyShopId           String?
+  billingStatus          String         @default("UNSELECTED")
+  billingVerifiedAt      DateTime?
+  billingPeriodEnd       DateTime?
+  billingCancelAtPeriodEnd Boolean       @default(false)
+  billingPendingPlan     String?
+  billingPrice           String?
+  billingCurrency        String?
+  billingError           String?
   locale                  String         @default("en")
   mode                    ShopMode       @default(TEST)
   enabled                 Boolean        @default(true)
