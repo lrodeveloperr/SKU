@@ -1,9 +1,10 @@
-import { useActionData, useLoaderData, useNavigation, type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
+import { Form, useActionData, useLoaderData, useNavigation, type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
 import { db } from "../db.server";
 import { requireShop } from "../services/session.server";
 import { startCatalogImportWithSessionRefresh } from "../services/catalog-import-auth.server";
-import { updateShopSettings } from "../services/shops.server";
+import { BillingAccessError, updateShopSettings } from "../services/shops.server";
 import { planFor } from "../domain/plans";
+import { hasVerifiedPlan } from "../domain/billing";
 import { fmt, messages, toLocale } from "../i18n";
 import { useT } from "../i18n/use-t";
 
@@ -18,6 +19,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     namespace: shop.modelMetafieldNamespace ?? "",
     key: shop.modelMetafieldKey ?? "",
     plan: planFor(shop.plan),
+    planActive: hasVerifiedPlan(shop),
     used,
     syncState: shop.syncState,
     lastSyncedAt: shop.lastSyncedAt?.toISOString() ?? null,
@@ -44,8 +46,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
     if (needsReimport) await startCatalogImportWithSessionRefresh(db, request, admin, updated);
     return { ok: true as const, message: needsReimport ? messages[toLocale(updated.locale)].settings.modelChanged : messages[toLocale(updated.locale)].common.saved };
-  } catch {
-    return { ok: false as const, error: t.settings.invalidMetafield };
+  } catch (error) {
+    return { ok: false as const, error: error instanceof BillingAccessError ? t.billing.requirePlan : t.settings.invalidMetafield };
   }
 };
 
@@ -60,7 +62,7 @@ export default function Settings() {
     <s-page heading={t.settings.title}>
       {result && (result.ok ? <s-banner tone="success">{result.message}</s-banner> : <s-banner tone="critical">{result.error}</s-banner>)}
 
-      <form method="post" action="/app/settings">
+      <Form method="post" action="/app/settings">
         <s-section heading={t.settings.mode}>
           <s-stack gap="base">
             <s-select label={t.settings.mode} name="mode" value={d.mode}>
@@ -99,16 +101,16 @@ export default function Settings() {
             {t.common.save}
           </s-button>
         </s-section>
-      </form>
+      </Form>
 
       <s-section heading={t.settings.plan}>
         <s-stack gap="small-200">
           <s-text>
-            {d.plan.name} · ${d.plan.priceUsd}/mo
+            {d.planActive ? `${d.plan.name} · $${d.plan.priceUsd}/mo` : t.billing.unselected}
           </s-text>
           <s-text>{fmt(t.settings.usage, { used: d.used.toLocaleString(), max: d.plan.maxVariants.toLocaleString() })}</s-text>
           {over && <s-banner tone="warning">{t.settings.overLimit}</s-banner>}
-          <s-text>{t.settings.billingNote}</s-text>
+          <s-button href="/app/billing" variant="primary">{t.billing.title}</s-button>
         </s-stack>
       </s-section>
 

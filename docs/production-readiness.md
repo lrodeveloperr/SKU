@@ -37,8 +37,12 @@ This app is wired for production on Railway and the Shopify Partner app named Ex
 | `IP_HASH_SECRET` | Secret used to HMAC client IPs for rate limiting. |
 | `NODE_ENV` | `production`. |
 | `PORT` | `3000`. |
+| `SHOPIFY_PARTNER_ORGANIZATION_ID` | `5223843` for Partner API billing verification. |
+| `SHOPIFY_PARTNER_APP_ID` | `gid://shopify/App/430251048961`. |
+| `SHOPIFY_PARTNER_ACCESS_TOKEN` | Server-only Partner API client token with Manage apps permission. |
+| `SHOPIFY_APP_HANDLE` | Verified App Store handle for the Shopify-hosted pricing page. |
 
-The connected Railway service currently exposes all required variable names. Secret values are intentionally not stored in the repository.
+Existing Shopify and database variables are configured. The four billing variables above must be verified and configured before releasing the App Pricing change. Secret values are not stored in the repository.
 
 ## Shopify Partner App Settings
 

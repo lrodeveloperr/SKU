@@ -4,6 +4,7 @@ import { completeBulkImport, startCatalogImport } from "./catalog-import.server"
 import { reconcileShop } from "./catalog-sync.server";
 import { invalidateShop } from "./cache.server";
 import { purgeOldEvents } from "./search-events.server";
+import { refreshBilling } from "./billing.server";
 
 const STUCK_IMPORT_MS = 10 * 60_000;
 const WEBHOOK_JOB_RETENTION_MS = 7 * 86_400_000;
@@ -42,6 +43,7 @@ export async function runNightlyJobs(
   for (const shop of shops) {
     try {
       const admin = await getAdmin(shop.domain);
+      await refreshBilling(db, shop, admin, { force: true });
 
       const stuck = await db.syncJob.findMany({
         where: {

@@ -6,8 +6,8 @@ import { completeBulkImport } from "../services/catalog-import.server";
 import { getIdentifierHealthCached } from "../services/health.server";
 import { getRecoveryAnalytics } from "../services/analytics.server";
 import { startCatalogImportWithSessionRefresh } from "../services/catalog-import-auth.server";
-import { getShopByDomain, setEmbedActive, updateShopSettings } from "../services/shops.server";
-import { unauthenticated } from "../shopify.server";
+import { BillingAccessError, setEmbedActive, updateShopSettings } from "../services/shops.server";
+import { canServeCatalog } from "../domain/billing";
 import { fmt } from "../i18n";
 import { useT } from "../i18n/use-t";
 import { screenshotAnalytics, screenshotHealth, screenshotShop } from "../services/screenshot-fixtures.server";
@@ -112,6 +112,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       counts: screenshotHealth.counts,
       recovered: analytics.recovered,
       unresolved: analytics.unresolved,
+      billingReady: false,
     };
   }
   const { admin, shop } = await requireShop(request);
@@ -146,6 +147,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     counts: health?.counts ?? null,
     recovered: analytics?.recovered ?? 0,
     unresolved: analytics?.unresolved ?? 0,
+    billingReady: canServeCatalog(currentShop, health?.indexedVariants ?? 0),
   };
 };
 
@@ -153,18 +155,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const url = new URL(request.url);
   const form = await safeFormData(request);
   const intent = actionValue(form, url, "intent");
-  let context: Pick<Awaited<ReturnType<typeof requireShop>>, "admin" | "shop">;
+  // Never substitute an offline session when the merchant request fails authentication.
+  const { admin, shop, t } = await requireShop(request);
   try {
-    context = await requireShop(request);
-  } catch (err) {
-    const domain = domainFromAction(request, form, url);
-    if (!domain) throw err;
-    const shop = await getShopByDomain(db, domain);
-    if (!shop) throw err;
-    const { admin } = await unauthenticated.admin(domain);
-    context = { admin, shop };
-  }
-  const { admin, shop } = context;
   switch (intent) {
     case "mode":
       await updateShopSettings(db, shop.id, { mode: actionValue(form, url, "mode") === "LIVE" ? "LIVE" : "TEST" });
@@ -176,7 +169,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       await setEmbedActive(db, shop.id, actionValue(form, url, "active") === "1");
       break;
   }
-  return null;
+  return { error: null };
+  } catch (error) {
+    if (error instanceof BillingAccessError) return { error: t.billing.requirePlan };
+    throw error;
+  }
 };
 
 function Step(props: { title: string; done: boolean; children: React.ReactNode }) {
@@ -251,11 +248,16 @@ export default function Overview() {
 
   return (
     <s-page heading={t.overview.title}>
+      {fetcher.data?.error && <s-banner tone="warning">{fetcher.data.error}</s-banner>}
       <s-section>
         <s-paragraph>{t.overview.intro}</s-paragraph>
       </s-section>
 
       <s-section heading={t.overview.setup} />
+      <s-section heading={t.billing.title}>
+        <s-paragraph>{d.billingReady ? t.billing.ready : t.billing.requirePlan}</s-paragraph>
+        <s-button href="/app/billing" variant="primary">{t.billing.title}</s-button>
+      </s-section>
 
       <Step title={`1. ${t.overview.stepImport}`} done={importDone}>
         {importDone && <s-paragraph>{fmt(t.overview.stepImportDone, { count: d.indexed })}</s-paragraph>}
@@ -299,7 +301,7 @@ export default function Overview() {
           <input type="hidden" name="intent" value="mode" />
           <input type="hidden" name="mode" value={live ? "TEST" : "LIVE"} />
           <input type="hidden" name="domain" value={d.domain} />
-          <s-button type="submit" variant={live ? "secondary" : "primary"} disabled={!importDone}>
+          <s-button type="submit" variant={live ? "secondary" : "primary"} disabled={!importDone || (!live && !d.billingReady)}>
             {live ? t.overview.backToTest : t.overview.goLive}
           </s-button>
         </fetcher.Form>

@@ -9,8 +9,10 @@ import {
   type ResolvedMatch,
 } from "../domain/identifiers/lookup";
 import { classifyQuery, normalizeIdentifier, type IdentifierType } from "../domain/identifiers/normalize";
-import { lookupCache, shopVersion, shopConfigCache } from "./cache.server";
+import { lookupCache, shopVersion, shopConfigCache, catalogSizeCache } from "./cache.server";
 import { recordSearchEvent } from "./search-events.server";
+import { canServeCatalog, BILLING_REFRESH_MS } from "../domain/billing";
+import { refreshBilling } from "./billing.server";
 
 /** Server-side budget; the storefront script enforces its own 150 ms abort. */
 export const LOOKUP_TIMEOUT_MS = 120;
@@ -256,10 +258,6 @@ export async function lookupForShop(
   // Cached hits are still counted, so analytics reflect every recovered search.
   const cacheKey = `${shop.domain}\u0000${shopVersion(shop.domain)}\u0000${req.preview ? 1 : 0}\u0000${req.query}`;
   const cached = lookupCache.get(cacheKey) as ResolveOutcome | undefined;
-  if (cached) {
-    record(cached);
-    return cached.response;
-  }
 
   const failure = (outcome: "TIMEOUT" | "ERROR", reason: LookupReason): LookupResponse => {
     void recordSearchEvent(db, {
@@ -273,9 +271,16 @@ export async function lookupForShop(
   };
 
   try {
+    // Check access before returning a cached match. Subscription checks never block a shopper request.
+    if (!canServeCatalog(shop, 0, now())) return none("disabled");
+    const indexed = catalogSizeCache.get(shop.domain) ?? await withTimeout(db.catalogVariant.count({ where: { shopId: shop.id } }), timeoutMs);
+    if (indexed === "timeout") return failure("TIMEOUT", "timeout");
+    catalogSizeCache.set(shop.domain, indexed);
+    if (!canServeCatalog(shop, indexed, now())) return none("disabled");
+    if (cached) { record(cached); return cached.response; }
     const outcome = await withTimeout(
       resolveForShop(new PrismaIdentifierStore(db, shop.id), shop, req),
-      timeoutMs,
+      Math.max(1, timeoutMs - (now() - started)),
     );
     if (outcome === "timeout") return failure("TIMEOUT", "timeout");
     record(outcome);
@@ -289,8 +294,16 @@ export async function lookupForShop(
 /** Loads a shop's config, cached briefly because every lookup needs it. */
 export async function getShopConfig(db: PrismaClient, domain: string): Promise<Shop | null> {
   const hit = shopConfigCache.get(domain) as Shop | null | undefined;
-  if (hit !== undefined) return hit;
+  if (hit !== undefined) {
+    if (hit && (!hit.billingVerifiedAt || Date.now() - hit.billingVerifiedAt.getTime() >= BILLING_REFRESH_MS)) {
+      void refreshBilling(db, hit).catch(() => undefined);
+    }
+    return hit;
+  }
   const shop = await db.shop.findUnique({ where: { domain } });
+  if (shop && (!shop.billingVerifiedAt || Date.now() - shop.billingVerifiedAt.getTime() >= BILLING_REFRESH_MS)) {
+    void refreshBilling(db, shop).catch(() => undefined);
+  }
   shopConfigCache.set(domain, shop);
   return shop;
 }

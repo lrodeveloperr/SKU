@@ -37,6 +37,7 @@ export default function AppLayout() {
           <s-link href="/app/diagnostic">{t.nav.diagnostic}</s-link>
           <s-link href="/app/analytics">{t.nav.analytics}</s-link>
           <s-link href="/app/settings">{t.nav.settings}</s-link>
+          <s-link href="/app/billing">{t.billing.title}</s-link>
         </s-app-nav>
       )}
       <Outlet />

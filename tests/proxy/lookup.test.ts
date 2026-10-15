@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { candidatesFromCatalogVariants, lookupForShop, resolveForShop } from "../../app/services/lookup.server";
-import { lookupCache, shopConfigCache, invalidateShop } from "../../app/services/cache.server";
+import { lookupCache, shopConfigCache, catalogSizeCache, invalidateShop } from "../../app/services/cache.server";
 import { RateLimiter, hashClient } from "../../app/services/rate-limit.server";
 import { MemoryStore } from "../helpers";
 
@@ -54,7 +54,7 @@ function fakeDb(
     events,
     db: {
       identifierEntry: { findMany },
-      catalogVariant: { findMany: findManyVariants },
+      catalogVariant: { findMany: findManyVariants, count: async () => 1 },
       searchEvent: { create: async ({ data }: any) => void events.push(data) },
     } as never,
   };
@@ -64,12 +64,13 @@ const row = {
   type: "SKU", variantId: "v1", spaced: "ab-123",
   variant: { legacyId: "1", productId: "p1", handle: "widget", productTitle: "Widget", variantTitle: "Default", inStock: true },
 };
-const shopRow = { id: "s1", domain: "t.myshopify.com", enabled: true, mode: "LIVE", syncState: "READY", outOfStockMode: "SHOW" } as never;
+const shopRow = { id: "s1", domain: "t.myshopify.com", enabled: true, mode: "LIVE", syncState: "READY", outOfStockMode: "SHOW", plan: "starter", billingStatus: "ACTIVE", billingVerifiedAt: new Date(), billingCancelAtPeriodEnd: false, billingPeriodEnd: null } as never;
 
 describe("lookupForShop", () => {
   beforeEach(() => {
     lookupCache.clear();
     shopConfigCache.clear();
+    catalogSizeCache.clear();
   });
 
   it("times out to a fail-open response and records the timeout", async () => {
@@ -136,6 +137,22 @@ describe("lookupForShop", () => {
       status: "match",
       matches: [{ url: "/products/snowboard?variant=1", identifierTypes: ["SKU"] }],
     });
+  });
+
+  it("does not return a cached match after subscription access is revoked", async () => {
+    const { db } = fakeDb(async () => [row]);
+    const request = { query: "AB-123", preview: false };
+    expect((await lookupForShop(db, shopRow, request)).status).toBe("match");
+    expect(await lookupForShop(db, { ...(shopRow as object), billingStatus: "UNSELECTED" } as never, request))
+      .toEqual({ v: 1, status: "none", reason: "disabled" });
+  });
+
+  it("uses native search when the catalog exceeds the plan, including cached matches", async () => {
+    const { db } = fakeDb(async () => [row]);
+    const request = { query: "AB-123", preview: false };
+    expect((await lookupForShop(db, shopRow, request)).status).toBe("match");
+    catalogSizeCache.set("t.myshopify.com", 5001);
+    expect((await lookupForShop(db, shopRow, request)).reason).toBe("disabled");
   });
 });
 
